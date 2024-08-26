@@ -1,7 +1,7 @@
--- Drop the old column
-ALTER TABLE your_table
-DROP COLUMN create_date;
-
--- Add the new column with TIMESTAMP(6)
-ALTER TABLE your_table
-ADD (create_date TIMESTAMP(6));
+ENV_ALARMS_TESTED              TIMESTAMP(6)  
+META_LASTUPDATEDATE            TIMESTAMP(6)  
+META_CREATEDDATE               TIMESTAMP(6)  
+META_LASTUPDATEBY              VARCHAR2(26)  
+META_CREATEDBY                 VARCHAR2(26)  
+ENV_NOCC_MONITORED             CHAR(1)       
+PRIMARY_SWITCH_UNID            VARCHAR2(128) 
