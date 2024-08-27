@@ -1,8 +1,1 @@
-Hi Akash, I realized that I missed adding a column and mistakenly provided incorrect data types for the `META_CREATEDDATE` and `META_LASTUPDATEDATE` columns in my SQL query.
 
-Here are the correct details for production:
-
-— ALTER TABLE OPS_DATA_SWITCH ADD (ENV_ALARMS_TESTED TIMESTAMP(6));
-— ALTER TABLE OPS_DATA_SWITCH MODIFY (META_LASTUPDATEDATE TIMESTAMP(6), META_CREATEDDATE TIMESTAMP(6));
-
-I apologize for the oversight and any inconvenience this may have caused.
