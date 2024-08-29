@@ -1,12 +1,24 @@
-Insert into SWITCH_INSTALLED_SUBELEMENTS (SUBELEMENT_NAME,SUBELEMENT_ROLE,LOCATION_ID,ELEMENT_ID,META_UNIVERSAL_ID,META_CREATED_DATE,META_CREATED_BY,META_LAST_UPDATE_DATE,META_LAST_UPDATE_BY,SOURCE_UNIVERSAL_ID) values ('HCHLILMTMS1-RFW95005','Primary 1',268,53,'3B9978DB7682EBA59C742B95D86AEF12',TO_DATE('2024-04-03 08:54:28.0','YYYY-MM-DD HH24:MI:SS'),'lovean2',TO_DATE('2024-04-03 08:54:28.0','YYYY-MM-DD HH24:MI:SS'),'lovean2','B54C273303372243EE3B07BDF609A761');
-
-Error report -
-SQL Error: ORA-01830: date format picture ends before converting entire input string
-01830. 00000 -  "date format picture ends before converting entire input string"
-*Cause:    
-*Action:
-Error starting at line : 28 in command -
-Insert into SWITCH_INSTALLED_SUBELEMENTS (SUBELEMENT_NAME,SUBELEMENT_ROLE,LOCATION_ID,ELEMENT_ID,META_UNIVERSAL_ID,META_CREATED_DATE,META_CREATED_BY,META_LAST_UPDATE_DATE,META_LAST_UPDATE_BY,SOURCE_UNIVERSAL_ID) values ('DOTWNJDVOS1-ROM65001','Primary 2',286,75,'0A0404696C874E0CE2F1594E01143F08',TO_DATE('2023-11-28 14:50:40.0','YYYY-MM-DD HH24:MI:SS'),'nguma69','2023-11-28 14:50:40.0','nguma69','4C04850FD967DCA2BE6DF2217DD36449')
-Error report -
-SQL Error: ORA-01830: date format picture ends before converting entire input string
-01830. 00000 -  "date format picture ends before converting entire input string"
+attached_file_id
+source_universalid	varchar
+is_secure	bit
+file_name	varchar
+file_path	varchar
+file_path_full	varchar
+file_size	bigint
+file_modifiedDate	datetime
+meta_universalID	char
+meta_createdDate	datetime
+meta_createdBy	varchar
+meta_lastUpdateDate	datetime
+meta_lastUpdateBy	varchar
+SEC_READ	int
+SEC_UPDATE	int
+SEC_DELETE	int
+SEC_EXCLUDE	int
+category	varchar
+description	varchar
+SEC_ALLOWONLY	int
+source_class	varchar
+source_table	varchar
+is_draft	bit
+primary_category	nvarchar         
