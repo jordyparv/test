@@ -1,18 +1,21 @@
 WITH aggregatedNames AS (
     SELECT
         odsc.SWITCH_UNIVERSALID,
-        listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}' ,',') 
-            WITHIN GROUP (ORDER BY odsc.fname, odsc.lname) AS tech_details
+        listagg(
+            '{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}', 
+            ','
+        ) WITHIN GROUP (ORDER BY odsc.fname, odsc.lname) AS tech_details
     FROM ops_data_switch_contacts odsc
     WHERE odsc.cfd_role = 'SWITCH_TECH'
     GROUP BY odsc.SWITCH_UNIVERSALID
 ),
 filtered_sie AS (
-    SELECT *
+    SELECT
+        *
     FROM SWITCH_INSTALLED_ELEMENTS
     WHERE
-        (:startDate IS NULL OR startDate = :startDate) AND
-        (:endDate IS NULL OR endDate = :endDate)
+        (:startDate IS NULL OR startDate >= :startDate) AND
+        (:endDate IS NULL OR endDate <= :endDate)
 ),
 paged_results AS (
     SELECT
@@ -40,4 +43,5 @@ paged_results AS (
 )
 SELECT *
 FROM paged_results
-WHERE rownum BETWEEN :startRow AND :endRow;
+WHERE rownum <= :endRow
+  AND rownum >= :startRow;
