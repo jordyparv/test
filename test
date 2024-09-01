@@ -8,14 +8,11 @@ WITH aggregatedNames AS (
     GROUP BY odsc.SWITCH_UNIVERSALID
 ),
 filtered_sie AS (
-    SELECT
-        location_id,
-        MAX(some_column) AS some_column -- Replace with your specific aggregation
+    SELECT *
     FROM SWITCH_INSTALLED_ELEMENTS
     WHERE
         (:startDate IS NULL OR startDate = :startDate) AND
         (:endDate IS NULL OR endDate = :endDate)
-    GROUP BY location_id
 ),
 paged_results AS (
     SELECT
