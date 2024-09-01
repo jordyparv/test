@@ -1,1 +1,25 @@
-select ods.SUB_MARKET AS MARKET, ods.sub_market , ods.tech_details, ods.address, ods.SWITCH_UNID, ods.total_count,ods.NAME as switch_name,ods.XING_ID AS CND_ID,ods.V_ZONE_NAME AS CALLOUT_ZONE,ods.SWITCH_NETWORK_ID AS FUZE_ID from
+with aggregatedNames as(
+            select
+            odsc.SWITCH_UNIVERSALID,
+            listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}' ,',') within group (order by odsc.fname,odsc.lname) as tech_details
+            from ops_data_switch_contacts odsc
+            where
+            odsc.cfd_role = 'SWITCH_TECH'
+            GROUP BY odsc.SWITCH_UNIVERSALID)
+              select ods.SWITCH_UNID, ods.sub_market market,ods.region as sub_market, ods.tech_details, ods.address, ods.total_count,ods.NAME as switch_name,ods.XING_ID AS CND_ID,ods.V_ZONE_NAME AS CALLOUT_ZONE,ods.SWITCH_NETWORK_ID AS FUZE_ID from
+            (select  sie.*, ods.*, ag.tech_details,count(*) over() as total_count, rownum as rnum from aggregatedNames ag
+            right join ops_data_switch ods
+            on ag.SWITCH_UNIVERSALID = ods.switch_unid
+            join SWITCH_INSTALLED_ELEMENTS sie 
+            on sie.location_id = ods.locationid 
+            where
+            (:name is null or lower(ods.NAME)=lower(:name)) AND
+            (:switch_code is null or lower(ods.switch_code)=lower(:switch_code)) AND
+            (:market is null or lower(ods.SUB_MARKET)=lower(:market)) AND
+            (:vsm_name is null or lower(ods.vsm_switch) like lower(:vsm_name)) AND
+            (:startDate is null )
+            AND
+            (:endDate is null)
+            order by ods.created_on desc
+            ) ods
+            where rnum between :startRow and :endRow
