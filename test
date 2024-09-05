@@ -1,43 +1,5 @@
-MERGE INTO OPSINV.SWITCH_ATTACHMENTS tgt
-USING (SELECT 'sample_id' AS id FROM dual) src
-ON (tgt.META_UNIVERSALID = src.id)
-WHEN MATCHED THEN
-    UPDATE SET
-        tgt.REFMETAID = 'sample_refmetaid',
-        tgt.ATTACHMENT_NAME = 'sample_name',
-        tgt.ATTACHMENT_SIZE = 1234,
-        tgt.ATTACHMENT = 'sample_attachment',
-        tgt.META_UNIVERSALID = 'sample_id',
-        tgt.CREATED_ON = TO_DATE('2024-09-05 12:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-        tgt.CREATED_BY = 'sample_creator',
-        tgt.MODIFIED_ON = TO_DATE('2024-09-05 12:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-        tgt.MODIFIED_BY = 'sample_modifier',
-        tgt.DESCRIPTION = 'sample_description',
-        tgt.ATTACHMENT_CATEGORY = 'sample_category'
-WHEN NOT MATCHED THEN
-    INSERT (
-        REFMETAID,
-        ATTACHMENT_NAME,
-        ATTACHMENT_SIZE,
-        ATTACHMENT,
-        META_UNIVERSALID,
-        CREATED_ON,
-        CREATED_BY,
-        MODIFIED_ON,
-        MODIFIED_BY,
-        DESCRIPTION,
-        ATTACHMENT_CATEGORY
-    )
-    VALUES (
-        'sample_refmetaid',
-        'sample_name',
-        1234,
-        'sample_attachment',
-        'sample_id',
-        TO_DATE('2024-09-05 12:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-        'sample_creator',
-        TO_DATE('2024-09-05 12:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-        'sample_modifier',
-        'sample_description',
-        'sample_category'
-    );
+Error report -
+SQL Error: ORA-38104: Columns referenced in the ON Clause cannot be updated: "TGT"."META_UNIVERSALID"
+38104. 00000 -  "Columns referenced in the ON Clause cannot be updated: %s"
+*Cause:    LHS of UPDATE SET contains the columns referenced in the ON Clause
+*Action:
