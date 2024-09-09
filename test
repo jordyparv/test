@@ -2,51 +2,57 @@
 I was given sample data from the opsTracker database with three tables: switchElements, SwitchInstalledElements, and SwitchInstalledSubElements.
 I mapped their column names to the opsTracker and iop schemas as follows:
 
-left columns of opsTracker and right of IOP
+showing the column mappings with the columns from the `opsTracker` database on the left and their corresponding columns in the `iop` schema on the right:
 
-switchElements Table:
 
-const switchElementsColsMap = {
-  ElementId: "ELEMENT_ID",
-  Description: "DESCRIPTION",
-  ElementDivision: "ELEMENT_DIVISION",
-  ElementDept: "ELEMENT_DEPT",
-  ElementSubdept: "ELEMENT_SUB_DEPT",
-  ISDISABLED: "IS_DISABLED",
-  META_UNIVERSALID: "META_UNIVERSAL_ID",
-  META_CREATEDDATE: "META_CREATED_DATE",
-  META_CREATEDBY: "META_CREATED_BY",
-  META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
-  META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
-  NO_DIRTRACKER: "NO_DIRTRACKER"
-};
+### Column Mappings
 
-SwitchInstalledElements Table:
+#### `switchElements` Table
 
-const switchInstalledElementsColsMap = {
-  LocationId: "LOCATION_ID",
-  ElementId: "ELEMENT_ID",
-  StartDate: "START_DATE",
-  EndDate: "END_DATE",
-  META_UNIVERSALID: "META_UNIVERSAL_ID",
-  META_CREATEDDATE: "META_CREATED_DATE",
-  META_CREATEDBY: "META_CREATED_BY",
-  META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
-  META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
-  NOTIFY_OVERRIDE: "NOTIFY_OVERRIDE"
-};
+| **opsTracker**      | **iop**              |
+|---------------------|-----------------------|
+| ElementId           | ELEMENT_ID            |
+| Description         | DESCRIPTION           |
+| ElementDivision     | ELEMENT_DIVISION      |
+| ElementDept         | ELEMENT_DEPT          |
+| ElementSubdept      | ELEMENT_SUB_DEPT      |
+| ISDISABLED          | IS_DISABLED           |
+| META_UNIVERSALID    | META_UNIVERSAL_ID     |
+| META_CREATEDDATE    | META_CREATED_DATE     |
+| META_CREATEDBY      | META_CREATED_BY       |
+| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
+| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
+| NO_DIRTRACKER       | NO_DIRTRACKER         |
 
-SwitchInstalledSubElements Table:
-const switchInstalledSubElementsColsMap = {
-  SUBELEMENT_NAME: "SUB_ELEMENT_NAME",
-  SUBELEMENT_ROLE: "SUB_ELEMENT_ROLE",
-  LOCATIONID: "LOCATION_ID",
-  ELEMENTID: "ELEMENT_ID",
-  META_UNIVERSALID: "META_UNIVERSAL_ID",
-  META_CREATEDDATE: "META_CREATED_DATE",
-  META_CREATEDBY: "META_CREATED_BY",
-  META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
-  META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
-  SOURCE_UNIVERSALID: "SOURCE_UNIVERSAL_ID"
-};
+#### `SwitchInstalledElements` Table
+
+| **opsTracker**      | **iop**              |
+|---------------------|-----------------------|
+| LocationId          | LOCATION_ID           |
+| ElementId           | ELEMENT_ID            |
+| StartDate           | START_DATE            |
+| EndDate             | END_DATE              |
+| META_UNIVERSALID    | META_UNIVERSAL_ID     |
+| META_CREATEDDATE    | META_CREATED_DATE     |
+| META_CREATEDBY      | META_CREATED_BY       |
+| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
+| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
+| NOTIFY_OVERRIDE     | NOTIFY_OVERRIDE       |
+
+#### `SwitchInstalledSubElements` Table
+
+| **opsTracker**      | **iop**              |
+|---------------------|-----------------------|
+| SUBELEMENT_NAME     | SUB_ELEMENT_NAME      |
+| SUBELEMENT_ROLE     | SUB_ELEMENT_ROLE      |
+| LOCATIONID          | LOCATION_ID           |
+| ELEMENTID           | ELEMENT_ID            |
+| META_UNIVERSALID    | META_UNIVERSAL_ID     |
+| META_CREATEDDATE    | META_CREATED_DATE     |
+| META_CREATEDBY      | META_CREATED_BY       |
+| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
+| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
+| SOURCE_UNIVERSALID  | SOURCE_UNIVERSAL_ID   |
+
+
 These mappings ensure consistency between the opsTracker and iop schemas.
