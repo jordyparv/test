@@ -1,6 +1,10 @@
-I was provided the sample data of opsTracker DB which had 3 tables(switchElements,SwitchInstalledElements,SwitchInstalledSubElements)
-) so I mapped the columns name with respective to opsTracker and iop
-these are column names
+
+I was given sample data from the opsTracker database with three tables: switchElements, SwitchInstalledElements, and SwitchInstalledSubElements.
+I mapped their column names to the opsTracker and iop schemas as follows:
+
+left columns of opsTracker and right of IOP
+
+switchElements Table:
 
 const switchElementsColsMap = {
   ElementId: "ELEMENT_ID",
@@ -14,30 +18,35 @@ const switchElementsColsMap = {
   META_CREATEDBY: "META_CREATED_BY",
   META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
   META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
-  NO_DIRTRACKER: "NO_DIRTRACKER",
-};
-const switchInstalledElementsColsMap = {
-  "LocationId":"LOCATION_ID",
-  "ElementId":"ELEMENT_ID",
-  "StartDate":"START_DATE",
-  "EndDate":"END_DATE",
-  "META_UNIVERSALID":"META_UNIVERSAL_ID",
-  META_CREATEDDATE:"META_CREATED_DATE",
-  META_CREATEDBY:"META_CREATED_BY",
-  META_LASTUPDATEDATE:"META_LAST_UPDATED_DATE",
-  META_LASTUPDATEBY:"META_LAST_UPDATED_BY",
-  NOTIFY_OVERRIDE:"NOTIFY_OVERRIDE"
+  NO_DIRTRACKER: "NO_DIRTRACKER"
 };
 
-const switchInstalledSubElementsColsMap ={
- "SUBELEMENT_NAME":"SUB_ELEMENT_NAME",
-"SUBELEMENT_ROLE":	"SUB_ELEMENT_ROLE",
-"LOCATIONID":	"LOCATION_ID",
-"ELEMENTID":	"ELEMENT_ID",
-"META_UNIVERSALID":	"META_UNIVERSAL_ID",
-"META_CREATEDDATE":	"META_CREATED_DATE",
-"META_CREATEDBY":	"META_CREATED_BY",
-"META_LASTUPDATEDATE":	"META_LAST_UPDATED_DATE",
-"META_LASTUPDATEBY":	"META_LAST_UPDATED_BY",
-"SOURCE_UNIVERSALID":	"SOURCE_UNIVERSAL_ID"
-}
+SwitchInstalledElements Table:
+
+const switchInstalledElementsColsMap = {
+  LocationId: "LOCATION_ID",
+  ElementId: "ELEMENT_ID",
+  StartDate: "START_DATE",
+  EndDate: "END_DATE",
+  META_UNIVERSALID: "META_UNIVERSAL_ID",
+  META_CREATEDDATE: "META_CREATED_DATE",
+  META_CREATEDBY: "META_CREATED_BY",
+  META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
+  META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
+  NOTIFY_OVERRIDE: "NOTIFY_OVERRIDE"
+};
+
+SwitchInstalledSubElements Table:
+const switchInstalledSubElementsColsMap = {
+  SUBELEMENT_NAME: "SUB_ELEMENT_NAME",
+  SUBELEMENT_ROLE: "SUB_ELEMENT_ROLE",
+  LOCATIONID: "LOCATION_ID",
+  ELEMENTID: "ELEMENT_ID",
+  META_UNIVERSALID: "META_UNIVERSAL_ID",
+  META_CREATEDDATE: "META_CREATED_DATE",
+  META_CREATEDBY: "META_CREATED_BY",
+  META_LASTUPDATEDATE: "META_LAST_UPDATED_DATE",
+  META_LASTUPDATEBY: "META_LAST_UPDATED_BY",
+  SOURCE_UNIVERSALID: "SOURCE_UNIVERSAL_ID"
+};
+These mappings ensure consistency between the opsTracker and iop schemas.
