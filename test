@@ -1,83 +1,130 @@
-loadSwitchService.prototype.getDummyData = async function (key) {
-  
-  return {
-    switchElement: require("../dummy/SWITCH_ELEMENTS.json"),
-    switchInstallElement: require("../dummy/SWITCH_INSTALLED_ELEMENTS.json"),
-    switchInstallSubElement: require("../dummy/SWITCH_INSTALLED_SUBELEMENTS.json"),
-  }[key];
-};
+   syncSwitchElements:`
+MERGE INTO SWITCH_ELEMENTS tgt
+USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSAL_ID)
+WHEN MATCHED THEN
+    UPDATE SET
+ tgt.ELEMENT_ID = :ELEMENT_ID,
+ tgt.DESCRIPTION = :DESCRIPTION,
+ tgt.ELEMENT_DIVISION = :ELEMENT_DIVISION,
+ tgt.ELEMENT_DEPT = :ELEMENT_DEPT,
+ tgt.ELEMENT_SUB_DEPT = :ELEMENT_SUB_DEPT,
+ tgt.IS_DISABLED = :IS_DISABLED,
+ tgt.META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.META_CREATED_BY = :META_CREATED_BY,
+ tgt.META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY,
+ tgt.NO_DIRTRACKER = :NO_DIRTRACKER
+    
+WHEN NOT MATCHED THEN
+    INSERT (
+ELEMENT_ID,
+DESCRIPTION,
+ELEMENT_DIVISION,
+ELEMENT_DEPT,
+IS_DISABLED,
+META_UNIVERSAL_ID,
+META_CREATED_DATE,
+META_CREATED_BY,
+META_LAST_UPDATED_DATE,
+META_LAST_UPDATED_BY,
+NO_DIRTRACKER
+    )
+    VALUES (
+        :ELEMENT_ID,
+:DESCRIPTION,
+:ELEMENT_DIVISION,
+:ELEMENT_DEPT,
+:ELEMENT_SUB_DEPT,
+:IS_DISABLED,
+:META_UNIVERSAL_ID,
+ TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_CREATED_BY,
+TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_LAST_UPDATED_BY,
+ :NO_DIRTRACKER
+    )
+`,
+syncSwitchInstalledElements:`
+MERGE INTO SWITCH_INSTALLED_ELEMENTS tgt
+USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSAL_ID)
+WHEN MATCHED THEN
+    UPDATE SET
+ tgt.LOCATION_ID = :LOCATION_ID,
+ tgt.ELEMENT_ID = :ELEMENT_ID,
+ tgt.START_DATE = TO_DATE(:START_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.END_DATE = TO_DATE(:END_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.META_CREATED_BY = :META_CREATED_BY,
+ tgt.META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+ tgt.META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY,
+ tgt.NOTIFY_OVERRIDE = :NOTIFY_OVERRIDE
 
+WHEN NOT MATCHED THEN
+    INSERT (
+ LOCATION_ID,
+ ELEMENT_ID ,
+ START_DATE,
+ END_DATE,
+ META_UNIVERSAL_ID,
+ META_CREATED_DATE,
+ META_CREATED_BY,
+ META_LAST_UPDATED_DATE,
+ META_LAST_UPDATED_BY,
+ NOTIFY_OVERRIDE
+    )
+    VALUES (
+:LOCATION_ID,
+:ELEMENT_ID,
+TO_DATE(:START_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+TO_DATE(:END_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_UNIVERSAL_ID,
+TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_CREATED_BY,
+TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_LAST_UPDATED_BY,
+:NOTIFY_OVERRIDE
+    )
+`,
+syncSwitchInstalledSubElements:`
+MERGE INTO SWITCH_INSTALLED_ELEMENTS tgt
+USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSAL_ID)
+WHEN MATCHED THEN
+    UPDATE SET
+tgt.SUB_ELEMENT_NAME = :SUB_ELEMENT_NAME,
+tgt.SUB_ELEMENT_ROLE = :SUB_ELEMENT_ROLE,
+tgt.LOCATION_ID = :LOCATION_ID,
+tgt.ELEMENT_ID = :ELEMENT_ID,
+tgt.META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+tgt.META_CREATED_BY = :META_CREATED_BY,
+tgt.META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+tgt.META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY,
+tgt.SOURCE_UNIVERSAL_ID = :SOURCE_UNIVERSAL_ID
 
-loadSwitchService.prototype.populate_switch_installed_elements = function (
-  callback
-) {
-  async.waterfall(
-    [
-      // async.constant(
-      //   queryFactory.getQuery("getSwitchInstalledElementsFromOPS")
-      // ),
-      // loadSwitchService.prototype.getDataFromOpsTracker,
-      async.constant("switchInstallElement"),
-      loadSwitchService.prototype.getDummyData,
-      loadSwitchService.prototype.parseSwitchInstalledElements,
-      // loadSwitchService.prototype.insertDataIntoDB,
-    ],
-    function (err) {
-      if (err) {
-        logger.error(err);
-        return callback(err);
-      } else {
-        logger.info("switch installed element data Populated Successfully!");
-      }
-      callback();
-    }
-  );
-};
-
-loadSwitchService.prototype.parseSwitchInstalledElements = function (
-  data,
-  callback,
-) {
-  console.log(data[0])
-  if (data.length > 0) {
-   return  callback("no data available for switch installed elements");
-  }
-  let switchInstalledElementData = [];
-  data.forEach((item) => {
-    let switchInstalledElementTMP = {
-      LOCATION_ID: item["LocationId"],
-      ELEMENT_ID: item["ElementId"],
-      START_DATE: item["StartDate"],
-      END_DATE: item["EndDate"],
-      META_UNIVERSAL_ID: item["META_UNIVERSALID"],
-      META_CREATED_DATE:
-        moment(item["META_CREATEDDATE"]).format("YYYY-MM-DD HH:mm:ss") || null,
-      META_CREATED_BY: item["META_CREATEDBY"],
-      META_LAST_UPDATED_DATE:
-        moment(item["META_LASTUPDATEDATE"]).format("YYYY-MM-DD HH:mm:ss") ||
-        null,
-      META_LAST_UPDATED_BY: item["META_LASTUPDATEBY"],
-      NOTIFY_OVERRIDE: item["NOTIFY_OVERRIDE"],
-    };
-    switchInstalledElementData.push(switchInstalledElementTMP);
-  });
-
-  return callback(null,"syncSwitchInstalledElements", switchInstalledElementData);
-};
-
-
-info: switch element data Populated Successfully!
-{
-  LocationId: 141,
-  ElementId: 281,
-  StartDate: '16-NOV-23 12.00.00.000000000 AM',
-  EndDate: '31-DEC-37 12.00.00.000000000 AM',
-  META_UNIVERSALID: '1093867D9DB2811940C9D60573048A3E',
-  META_CREATEDDATE: '16-NOV-23 10.31.06.000000000 AM',
-  META_CREATEDBY: 'nguma69',
-  META_LASTUPDATEDATE: '16-NOV-23 10.31.06.000000000 AM',
-  META_LASTUPDATEBY: 'nguma69'
-}
-error: no data available for switch installed elements
-info: no data available for switch installed elements
-error: no data available for switch installed sub elements
+WHEN NOT MATCHED THEN
+    INSERT (
+SUB_ELEMENT_NAME,
+SUB_ELEMENT_ROLE,
+LOCATION_ID,
+ELEMENT_ID,
+META_UNIVERSAL_ID,
+META_CREATED_DATE,
+META_CREATED_BY,
+META_LAST_UPDATED_DATE,
+META_LAST_UPDATED_BY,
+SOURCE_UNIVERSAL_ID
+    )
+    VALUES (
+:SUB_ELEMENT_NAME,
+:SUB_ELEMENT_ROLE,
+:LOCATION_ID,
+:ELEMENT_ID,
+:META_UNIVERSAL_ID,
+TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_CREATED_BY,
+TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+:META_LAST_UPDATED_BY,
+:SOURCE_UNIVERSAL_ID
+    )
