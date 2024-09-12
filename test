@@ -1,58 +1,83 @@
-
-I was given sample data from the opsTracker database with three tables: switchElements, SwitchInstalledElements, and SwitchInstalledSubElements.
-I mapped their column names to the opsTracker and iop schemas as follows:
-
-showing the column mappings with the columns from the `opsTracker` database on the left and their corresponding columns in the `iop` schema on the right:
-
-
-### Column Mappings
-
-#### `switchElements` Table
-
-| **opsTracker**      | **iop**              |
-|---------------------|-----------------------|
-| ElementId           | ELEMENT_ID            |
-| Description         | DESCRIPTION           |
-| ElementDivision     | ELEMENT_DIVISION      |
-| ElementDept         | ELEMENT_DEPT          |
-| ElementSubdept      | ELEMENT_SUB_DEPT      |
-| ISDISABLED          | IS_DISABLED           |
-| META_UNIVERSALID    | META_UNIVERSAL_ID     |
-| META_CREATEDDATE    | META_CREATED_DATE     |
-| META_CREATEDBY      | META_CREATED_BY       |
-| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
-| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
-| NO_DIRTRACKER       | NO_DIRTRACKER         |
-
-#### `SwitchInstalledElements` Table
-
-| **opsTracker**      | **iop**              |
-|---------------------|-----------------------|
-| LocationId          | LOCATION_ID           |
-| ElementId           | ELEMENT_ID            |
-| StartDate           | START_DATE            |
-| EndDate             | END_DATE              |
-| META_UNIVERSALID    | META_UNIVERSAL_ID     |
-| META_CREATEDDATE    | META_CREATED_DATE     |
-| META_CREATEDBY      | META_CREATED_BY       |
-| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
-| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
-| NOTIFY_OVERRIDE     | NOTIFY_OVERRIDE       |
-
-#### `SwitchInstalledSubElements` Table
-
-| **opsTracker**      | **iop**              |
-|---------------------|-----------------------|
-| SUBELEMENT_NAME     | SUB_ELEMENT_NAME      |
-| SUBELEMENT_ROLE     | SUB_ELEMENT_ROLE      |
-| LOCATIONID          | LOCATION_ID           |
-| ELEMENTID           | ELEMENT_ID            |
-| META_UNIVERSALID    | META_UNIVERSAL_ID     |
-| META_CREATEDDATE    | META_CREATED_DATE     |
-| META_CREATEDBY      | META_CREATED_BY       |
-| META_LASTUPDATEDATE | META_LAST_UPDATED_DATE |
-| META_LASTUPDATEBY   | META_LAST_UPDATED_BY  |
-| SOURCE_UNIVERSALID  | SOURCE_UNIVERSAL_ID   |
+loadSwitchService.prototype.getDummyData = async function (key) {
+  
+  return {
+    switchElement: require("../dummy/SWITCH_ELEMENTS.json"),
+    switchInstallElement: require("../dummy/SWITCH_INSTALLED_ELEMENTS.json"),
+    switchInstallSubElement: require("../dummy/SWITCH_INSTALLED_SUBELEMENTS.json"),
+  }[key];
+};
 
 
-These mappings ensure consistency between the opsTracker and iop schemas.
+loadSwitchService.prototype.populate_switch_installed_elements = function (
+  callback
+) {
+  async.waterfall(
+    [
+      // async.constant(
+      //   queryFactory.getQuery("getSwitchInstalledElementsFromOPS")
+      // ),
+      // loadSwitchService.prototype.getDataFromOpsTracker,
+      async.constant("switchInstallElement"),
+      loadSwitchService.prototype.getDummyData,
+      loadSwitchService.prototype.parseSwitchInstalledElements,
+      // loadSwitchService.prototype.insertDataIntoDB,
+    ],
+    function (err) {
+      if (err) {
+        logger.error(err);
+        return callback(err);
+      } else {
+        logger.info("switch installed element data Populated Successfully!");
+      }
+      callback();
+    }
+  );
+};
+
+loadSwitchService.prototype.parseSwitchInstalledElements = function (
+  data,
+  callback,
+) {
+  console.log(data[0])
+  if (data.length > 0) {
+   return  callback("no data available for switch installed elements");
+  }
+  let switchInstalledElementData = [];
+  data.forEach((item) => {
+    let switchInstalledElementTMP = {
+      LOCATION_ID: item["LocationId"],
+      ELEMENT_ID: item["ElementId"],
+      START_DATE: item["StartDate"],
+      END_DATE: item["EndDate"],
+      META_UNIVERSAL_ID: item["META_UNIVERSALID"],
+      META_CREATED_DATE:
+        moment(item["META_CREATEDDATE"]).format("YYYY-MM-DD HH:mm:ss") || null,
+      META_CREATED_BY: item["META_CREATEDBY"],
+      META_LAST_UPDATED_DATE:
+        moment(item["META_LASTUPDATEDATE"]).format("YYYY-MM-DD HH:mm:ss") ||
+        null,
+      META_LAST_UPDATED_BY: item["META_LASTUPDATEBY"],
+      NOTIFY_OVERRIDE: item["NOTIFY_OVERRIDE"],
+    };
+    switchInstalledElementData.push(switchInstalledElementTMP);
+  });
+
+  return callback(null,"syncSwitchInstalledElements", switchInstalledElementData);
+};
+
+
+info: switch element data Populated Successfully!
+{
+  LocationId: 141,
+  ElementId: 281,
+  StartDate: '16-NOV-23 12.00.00.000000000 AM',
+  EndDate: '31-DEC-37 12.00.00.000000000 AM',
+  META_UNIVERSALID: '1093867D9DB2811940C9D60573048A3E',
+  META_CREATEDDATE: '16-NOV-23 10.31.06.000000000 AM',
+  META_CREATEDBY: 'nguma69',
+  META_LASTUPDATEDATE: '16-NOV-23 10.31.06.000000000 AM',
+  META_LASTUPDATEBY: 'nguma69'
+}
+error: no data available for switch installed elements
+info: no data available for switch installed elements
+error: no data available for switch installed sub elements
