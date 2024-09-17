@@ -1,1 +1,83 @@
+loadSwitchService.prototype.getFileFromOPS = async function (fileData) {
+  const url = `${config.opstracker.url}/C2Attachments/${fileData.SWITCH_UNID}/${fileData.ATTACHMENT_NAME}`;
+  // For testing
+  // const url = 'http://txslpmtkpa5v.nss.vzwnet.com/C2Attachments/714B17DCE687DA886214CE44C6D09AB3/test.txt'
+
+  const file = await axios({
+    url: url,
+    method: "GET",
+    responseType: "arraybuffer",
+    headers: {
+      Authorization: `${config.opstracker.authorization}`,
+    },
+  })
+    .then((res) => {
+      if (res.data !== undefined) {
+        return btoa(String.fromCharCode(...new Uint8Array(res.data)));
+      } else {
+        return null;
+      }
+    })
+    .catch((error) => {
+      logger.error("Error downloading file: ", error.message);
+      throw `Error downloading file: ${error.message}`;
+    });
+
+  return file;
+};
+
+
+
+
+loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
+  if (!data || data?.length == 0) {
+    throw "no data found to be parse";
+  }
+
+  let attachmentData = []
+  data?.forEach(async (item) => {
+    let attachmentTMP = {};
+    try {
+    const file = await loadSwitchService.prototype.getFileFromOPS(
+      {ATTACHMENT_NAME:item.file_name,SWITCH_UNID:item.source_universalid}
+    );
+    let file_type = item.file_path?.split(".")?.pop();
+    attachmentTMP.REFMETAID = item["source_universalid"];
+    attachmentTMP.ATTACHMENT_NAME = item["file_name"];
+    attachmentTMP.ATTACHMENT_SIZE = item["file_size"];
+    attachmentTMP.ATTACHMENT_TYPE = file_type;
+    attachmentTMP.META_UNIVERSALID = item["meta_universalID"];
+    attachmentTMP.CREATED_ON = item["meta_createdDate"];
+    attachmentTMP.CREATED_BY = item["meta_createdBy"];
+    attachmentTMP.MODIFIED_ON = item["meta_lastUpdateDate"];
+    attachmentTMP.MODIFIED_BY = item["meta_lastUpdateBy"];
+    attachmentTMP.ATTACHMENT_CATEGORY = item["source_class"]?.replace(
+      /c2/gi,
+      ""
+    );
+    attachmentTMP.DESCRIPTION = item["description"];
+    attachmentTMP.ATTACHMENT = file;
+    attachmentTMP.MODIFIED_ON =
+      moment(attachmentTMP.MODIFIED_ON).format("YYYY-MM-DD HH:mm:ss") || null;
+    attachmentTMP.CREATED_ON =
+      moment(attachmentTMP.CREATED_ON).format("YYYY-MM-DD HH:mm:ss") || null;
+
+    attachmentData.push(attachmentTMP)
+    
+      
+    } catch (error) {
+      console.log(error)
+    }
+  });
+  Promise.all(attachmentData)
+    .then((attachmentData) => {
+      if (attachmentData.length === 0) {
+        console.log("no attachment data available");
+        callback();
+      } else {
+        return callback(null, attachmentData);
+      }
+    })
+    .catch((error) => callback(error));
+};
 
