@@ -1,55 +1,49 @@
-loadSwitchService.prototype.parseSwitchAttachment = async function (data, callback) {
+loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
   if (!data || data.length === 0) {
-    return callback("no data found to be parsed");
+    return callback(null, []); // Return an empty array if no data is available
   }
 
-  try {
-    // Use map to create an array of promises
-    const attachmentPromises = data.map(async (item) => {
-      let attachmentTMP = {};
-      try {
-        const file = await this.getFileFromOPS({
-          ATTACHMENT_NAME: item.file_name,
-          SWITCH_UNID: item.source_universalid
-        });
+  // Helper function to process each item
+  const processItem = function (item) {
+    return loadSwitchService.prototype.getFileFromOPS({
+      ATTACHMENT_NAME: item.file_name,
+      SWITCH_UNID: item.source_universalid
+    }).then((file) => {
+      const file_type = item.file_path?.split(".")?.pop();
 
-        const file_type = item.file_path?.split(".")?.pop();
-
-        attachmentTMP = {
-          REFMETAID: item["source_universalid"],
-          ATTACHMENT_NAME: item["file_name"],
-          ATTACHMENT_SIZE: item["file_size"],
-          ATTACHMENT_TYPE: file_type,
-          META_UNIVERSALID: item["meta_universalID"],
-          CREATED_ON: item["meta_createdDate"] ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
-          CREATED_BY: item["meta_createdBy"],
-          MODIFIED_ON: item["meta_lastUpdateDate"] ? moment(item["meta_lastUpdateDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
-          MODIFIED_BY: item["meta_lastUpdateBy"],
-          ATTACHMENT_CATEGORY: item["source_class"]?.replace(/c2/gi, ""),
-          DESCRIPTION: item["description"],
-          ATTACHMENT: file
-        };
-
-        return attachmentTMP;
-      } catch (error) {
-        console.log(`Error processing item ${item.file_name}:`, error);
-        return null; // Return null if there's an error for this item
-      }
+      return {
+        REFMETAID: item["source_universalid"],
+        ATTACHMENT_NAME: item["file_name"],
+        ATTACHMENT_SIZE: item["file_size"],
+        ATTACHMENT_TYPE: file_type,
+        META_UNIVERSALID: item["meta_universalID"],
+        CREATED_ON: item["meta_createdDate"] ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
+        CREATED_BY: item["meta_createdBy"],
+        MODIFIED_ON: item["meta_lastUpdateDate"] ? moment(item["meta_lastUpdateDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
+        MODIFIED_BY: item["meta_lastUpdateBy"],
+        ATTACHMENT_CATEGORY: item["source_class"]?.replace(/c2/gi, ""),
+        DESCRIPTION: item["description"],
+        ATTACHMENT: file
+      };
+    }).catch((error) => {
+      console.log(`Error processing item ${item.file_name}:`, error);
+      return null; // Return null if there's an error for this item
     });
+  };
 
-    // Wait for all promises to resolve
-    const attachmentData = await Promise.all(attachmentPromises);
+  // Create an array of promises for each item in the data
+  const attachmentPromises = data.map(processItem);
 
-    // Filter out null values
-    const validAttachmentData = attachmentData.filter(item => item !== null);
+  // Wait for all promises to resolve
+  Promise.all(attachmentPromises)
+    .then((attachmentData) => {
+      // Filter out null values
+      const validAttachmentData = attachmentData.filter(item => item !== null);
 
-    if (validAttachmentData.length === 0) {
-      console.log("No attachment data available");
-      return callback(null, []); // Return an empty array if no data is available
-    }
-
-    return callback(null, validAttachmentData);
-  } catch (error) {
-    return callback(error);
-  }
+      // Return the result through the callback
+      callback(null, validAttachmentData);
+    })
+    .catch((error) => {
+      callback(error);
+    });
 };
