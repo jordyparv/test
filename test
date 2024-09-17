@@ -1,31 +1,50 @@
+if (process.argv.length === 3 && process.argv[2] === "populate_switch_attachments") {
+  let opsDbConfig = dbConUtil.getOPSDbConfig(config.opsTrackerDB);
+  
+  global.mssqlConn = new MsSqlUtil(opsDbConfig.mssqlConfig);
 
-loadSwitchService.prototype.getFileFromOPS = async function (fileData) {
-  const url = `${config.opstracker.url}/C2Attachments/${fileData.SWITCH_UNID}/${fileData.ATTACHMENT_NAME}`;
-  // For testing
-  // const url = 'http://txslpmtkpa5v.nss.vzwnet.com/C2Attachments/714B17DCE687DA886214CE44C6D09AB3/test.txt'
-
-  const file = await axios({
-    url: url,
-    method: "GET",
-    responseType: "arraybuffer",
-    headers: {
-      Authorization: `${config.opstracker.authorization}`,
-    },
-  })
-    .then((res) => {
-      if (res.data !== undefined) {
-        return btoa(String.fromCharCode(...new Uint8Array(res.data)));
-      } else {
-        return null;
-      }
+  global.mssqlConn.connect()
+    .then(() => {
+      ldSwitchService.populateSwitchAttachments((err) => {
+        global.mssqlConn.disconnect();
+        if (err) {
+          console.error("Error:", err.message);
+          process.exit(1);
+        } else {
+          process.exit(0);
+        }
+      });
     })
     .catch((error) => {
-      logger.error("Error downloading file: ", error.message);
-      throw `Error downloading file: ${error.message}`;
+      console.error("Connection Error:", error.message);
+      process.exit(1);
     });
+}
 
-  return file;
+
+
+
+loadSwitchService.prototype.populateSwitchAttachments = function (callback) {
+  async.waterfall(
+    [
+      async.constant(queryFactory.getSwitchAttachmentFromOPS("SWITCH_LOCATION")),
+      loadSwitchService.prototype.getDataFromOpsTracker,
+      // loadSwitchService.prototype.getDummyFiles,
+      loadSwitchService.prototype.parseSwitchAttachment,
+      loadSwitchService.prototype.upsertINTOSwitchAttachment,
+    ],
+    function (err) {
+      if (err) {
+        logger.info("Error:", err);
+        return callback(err);
+      } else {
+        console.log("Switch Attachments Data Populated Successfully!!");
+        return callback();
+      }
+    }
+  );
 };
+
 
 
 
@@ -79,47 +98,28 @@ loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
     });
 };
 
-loadSwitchService.prototype.populateSwitchAttachments = function (callback) {
-  async.waterfall(
-    [
-      async.constant(
-        queryFactory.getSwitchAttachmentFromOPS("SWITCH_LOCATION")
-      ),
-      loadSwitchService.prototype.getDataFromOpsTracker,
-      // loadSwitchService.prototype.getDummyFiles,
-      loadSwitchService.prototype.parseSwitchAttachment,
-      loadSwitchService.prototype.upsertINTOSwitchAttachment,
-    ],
-    function (err) {
-      if (err) {
-        logger.info("error=>", err);
-        return callback(err);
-      } else {
-        console.log("Switch Attachments Data Populated Successfully!!");
-        return callback();
-      }
+
+loadSwitchService.prototype.getFileFromOPS = function (fileData) {
+  const url = `${config.opstracker.url}/C2Attachments/${fileData.SWITCH_UNID}/${fileData.ATTACHMENT_NAME}`;
+  
+  return axios({
+    url: url,
+    method: "GET",
+    responseType: "arraybuffer",
+    headers: {
+      Authorization: `${config.opstracker.authorization}`,
+    },
+  })
+  .then((res) => {
+    if (res.data) {
+      return btoa(String.fromCharCode(...new Uint8Array(res.data)));
+    } else {
+      return null;
     }
-  );
+  })
+  .catch((error) => {
+    // Log the error and return null to handle it gracefully
+    logger.error("Error downloading file: ", error.message);
+    return null;
+  });
 };
-
-if (
-        process.argv.length == 3 &&
-        process.argv[2] == "populate_switch_attachments"
-      ) {
-        let opsDbConfig = dbConUtil.getOPSDbConfig(config.opsTrackerDB)
-        global.mssqlConn = await new MsSqlUtil(opsDbConfig.mssqlConfig);
-
-        // global.mssqlConn = true;
-
-        if (mssqlConn) {
-          try {
-            ldSwitchService.populateSwitchAttachments(() => {
-              mssqlConn.disconnect();
-              process.exit();
-            });
-          } catch (error) {
-            console.error(error.message);
-            process.exit();
-          }
-        }
-      } 
