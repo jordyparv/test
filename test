@@ -1,23 +1,13 @@
- const url = `${config.opstracker.url}/C2Attachments/${fileData.SWITCH_UNID}/${fileData.ATTACHMENT_NAME}`;
-  
-  // const url = 'http://txslpmtkpa5v.nss.vzwnet.com/C2Attachments/714B17DCE687DA886214CE44C6D09AB3/test.txt'
-  return axios({
-    url: url,
-    method: "GET",
-    responseType: "arraybuffer",
-    headers: {
-      Authorization: `${config.opstracker.authorization}`,
-    },
-  })
-  .then((res) => {
-    if (res.data) {
-      return btoa(String.fromCharCode(...new Uint8Array(res.data)));
-    } else {
-      return null;
+const got = require('got');
+
+async function fetchData(url) {
+    try {
+        const response = await got(url, { responseType: 'buffer' });
+        const base64 = response.body.toString('base64');
+        console.log(base64);
+    } catch (error) {
+        console.error('Got error:', error.message);
     }
-  })
-  .catch((error) => {
-    // Log the error and return null to handle it gracefully
-    console.error("Error downloading file: ", error.message);
-    return null;
-  });
+}
+
+fetchData('https://example.com/file');
