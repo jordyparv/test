@@ -1,125 +1,29 @@
-if (process.argv.length === 3 && process.argv[2] === "populate_switch_attachments") {
-  let opsDbConfig = dbConUtil.getOPSDbConfig(config.opsTrackerDB);
-  
-  global.mssqlConn = new MsSqlUtil(opsDbConfig.mssqlConfig);
-
-  global.mssqlConn.connect()
-    .then(() => {
-      ldSwitchService.populateSwitchAttachments((err) => {
-        global.mssqlConn.disconnect();
-        if (err) {
-          console.error("Error:", err.message);
-          process.exit(1);
-        } else {
-          process.exit(0);
-        }
-      });
-    })
-    .catch((error) => {
-      console.error("Connection Error:", error.message);
-      process.exit(1);
-    });
-}
-
-
-
-
-loadSwitchService.prototype.populateSwitchAttachments = function (callback) {
-  async.waterfall(
-    [
-      async.constant(queryFactory.getSwitchAttachmentFromOPS("SWITCH_LOCATION")),
-      loadSwitchService.prototype.getDataFromOpsTracker,
-      // loadSwitchService.prototype.getDummyFiles,
-      loadSwitchService.prototype.parseSwitchAttachment,
-      loadSwitchService.prototype.upsertINTOSwitchAttachment,
-    ],
-    function (err) {
-      if (err) {
-        logger.info("Error:", err);
-        return callback(err);
-      } else {
-        console.log("Switch Attachments Data Populated Successfully!!");
-        return callback();
-      }
-    }
-  );
-};
-
-
-
-
-loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
-  if (!data || data.length === 0) {
-    return callback(null, []); // Return an empty array if no data is available
-  }
-
-  // Helper function to process each item
-  const processItem = function (item) {
-    return loadSwitchService.prototype.getFileFromOPS({
-      ATTACHMENT_NAME: item.file_name,
-      SWITCH_UNID: item.source_universalid
-    }).then((file) => {
-      const file_type = item.file_path?.split(".")?.pop();
-
-      return {
-        REFMETAID: item["source_universalid"],
-        ATTACHMENT_NAME: item["file_name"],
-        ATTACHMENT_SIZE: item["file_size"],
-        ATTACHMENT_TYPE: file_type,
-        META_UNIVERSALID: item["meta_universalID"],
-        CREATED_ON: item["meta_createdDate"] ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
-        CREATED_BY: item["meta_createdBy"],
-        MODIFIED_ON: item["meta_lastUpdateDate"] ? moment(item["meta_lastUpdateDate"]).format("YYYY-MM-DD HH:mm:ss") : null,
-        MODIFIED_BY: item["meta_lastUpdateBy"],
-        ATTACHMENT_CATEGORY: item["source_class"]?.replace(/c2/gi, ""),
-        DESCRIPTION: item["description"],
-        ATTACHMENT: file
-      };
-    }).catch((error) => {
-      console.log(`Error processing item ${item.file_name}:`, error);
-      return null; // Return null if there's an error for this item
-    });
-  };
-
-  // Create an array of promises for each item in the data
-  const attachmentPromises = data.map(processItem);
-
-  // Wait for all promises to resolve
-  Promise.all(attachmentPromises)
-    .then((attachmentData) => {
-      // Filter out null values
-      const validAttachmentData = attachmentData.filter(item => item !== null);
-
-      // Return the result through the callback
-      callback(null, validAttachmentData);
-    })
-    .catch((error) => {
-      callback(error);
-    });
-};
-
-
-loadSwitchService.prototype.getFileFromOPS = function (fileData) {
-  const url = `${config.opstracker.url}/C2Attachments/${fileData.SWITCH_UNID}/${fileData.ATTACHMENT_NAME}`;
-  
-  return axios({
-    url: url,
-    method: "GET",
-    responseType: "arraybuffer",
-    headers: {
-      Authorization: `${config.opstracker.authorization}`,
-    },
-  })
-  .then((res) => {
-    if (res.data) {
-      return btoa(String.fromCharCode(...new Uint8Array(res.data)));
-    } else {
-      return null;
-    }
-  })
-  .catch((error) => {
-    // Log the error and return null to handle it gracefully
-    logger.error("Error downloading file: ", error.message);
-    return null;
-  });
-};
+with filterOPSE as (select distinct sie.location_id from switch_elements odse 
+    join switch_installed_elements sie on sie.ELEMENT_ID = odse.ELEMENT_ID
+      where ((:element_div is null or lower(odse.ELEMENT_DIVISION) like lower(:element_div)) AND
+            (:element_dept is null or lower(odse.ELEMENT_DEPT) like lower(:element_dept)) AND
+            (:element_sub_dept is null or lower(odse.ELEMENT_SUB_DEPT) like lower(:element_sub_dept))) AND
+            (:startDate is null or :endDate is null or sie.start_date >= :startDate AND
+              sie.end_date <= :endDate))
+        select concat('{"fname":"' || ods.fname || '","lname":"' || ods.lname || '","cfd_role":"'|| ods.CFD_ROLE || '","userid":"' || ods.USERID ,'"}')  as tech_details,
+        ods.SWITCH_UNID, ods.sub_market as market,ods.region as sub_market, ods.address, ods.total_count,ods.NAME as switch_name,ods.XING_ID AS CND_ID,ods.V_ZONE_NAME AS CALLOUT_ZONE,ods.SWITCH_NETWORK_ID AS FUZE_ID from
+        (select distinct ods.SWITCH_UNID,ODS.META_CREATEDDATE,odsc.*, ods.market,ods.sub_market,ods.region,ods.address,ods.NAME,ods.XING_ID,ods.V_ZONE_NAME,ods.SWITCH_NETWORK_ID, count(distinct ods.switch_unid) over() as total_count, rownum as rnum from ops_data_switch ods
+        inner join ops_data_switch_contacts odsc
+        on odsc.SWITCH_UNIVERSALID = ods.switch_unid
+        join filterOPSE sie  on sie.location_id = ods.locationid
+        where odsc.switch_unid in (
+        select odsc2.switch_unid from ops_data_switch_contact odsc2
+        INNER JOIN SEC_CONTACT sc on (odsc2.userid = sc.login_id)
+        where
+        (:techid is null or (lower(odsc2.userid)=lower(:techid))) AND
+        (:mgrid is null or (lower(odsc2.userid)=lower(:mgrid ))) AND
+        ) AND
+        (:name is null or lower(ods.NAME) like lower(:name)) AND
+        (:area is null or lower(ods.MARKET)=lower(:area )) AND
+        (:market is null or lower(ods.SUB_MARKET)=lower(:market)) AND
+        (:sub_market is null or lower(ods.region)=lower(:sub_market)) AND
+        (:vsm_name is null or lower(ods.vsm_switch) like lower(:vsm_name)) AND
+        (:switch_code is null or lower(ods.switch_code) like lower(:switch_code))
+        order by ods.META_CREATEDDATE desc
+        ) ods
+        where rnum between :startRow and :endRow
