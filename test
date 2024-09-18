@@ -1,13 +1,9 @@
-const got = require('got');
-
-async function fetchData(url) {
-    try {
-        const response = await got(url, { responseType: 'buffer' });
-        const base64 = response.body.toString('base64');
-        console.log(base64);
-    } catch (error) {
-        console.error('Got error:', error.message);
+catch (error) {
+    console.error('Got error:', error.message);
+    if (error.response) {
+        console.error('Error Status:', error.response.statusCode);
+        console.error('Error Body:', error.response.body);
+    } else {
+        console.error('Request failed without a response:', error);
     }
 }
-
-fetchData('https://example.com/file');
