@@ -66,4 +66,4 @@ SELECT DISTINCT
     total_count
 FROM distinctSwitches
 WHERE rnum BETWEEN :startRow AND :endRow
-ORDER BY rnum;  -- Order by rnum to maintain pagination order
+ORDER BY rnum;  -- Ensure you have an ORDER BY clause for pagination
