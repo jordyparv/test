@@ -1,32 +1,27 @@
-loadSwitchService.prototype.upsertINTOSwitchAttachment = function (data, callback) {
-  if (data === undefined || data.length === 0) {
-    return console.error("No data found for insert SwitchAttachment");
+loadSwitchService.prototype.insertDataIntoDB = function (
+  query,
+  data,
+  callback
+) {
+  if (!query) {
+    callback("Please Provide the query to perform on db");
   }
-
-  const query = queryFactory.getQuery("syncSwitchAttachment");
-  const errors = [];
-
-  const promises = data.map((_data) => {
-    return new Promise((resolve) => {
-      oraUtil.execute(query, _data, (err, results) => {
-        if (err) {
-          errors.push(err);
-          resolve();
-        } else {
-          logger.info("Switch attachment data synced successfully.");
-          resolve(results);
-        }
-      });
+  if (data.length === 0) {
+     callback("Please Provide the data to insert in db");
+  }
+  let errors = [];
+  let sqlQuery = queryFactory.getQuery(query);
+  data.forEach((_data) => {
+    oraUtil.execute(sqlQuery, _data, (err, results) => {
+      if (err) {
+        errors.push(err);
+      }
     });
   });
 
-  Promise.all(promises)
-    .then(() => {
-      if (errors.length !== 0) {
-        callback(errors);
-      } else {
-        callback(null, []);
-      }
-    })
-    .catch(callback);
+  if (errors.length !== 0) {
+  callback(errors);
+  }
+else
+   callback();
 };
