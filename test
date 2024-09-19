@@ -1,29 +1,27 @@
-INSERT INTO OPSINV.SWITCH_ATTACHMENTS (
-    REFMETAID,
-    ATTACHMENT_NAME,
-    ATTACHMENT_SIZE,
-    ATTACHMENT_TYPE,
-    ATTACHMENT,
-    META_UNIVERSALID,
-    CREATED_ON,
-    CREATED_BY,
-    MODIFIED_ON,
-    MODIFIED_BY,
-    DESCRIPTION,
-    SWITCH_UNID,
-    ATTACHMENT_CATEGORY
-) VALUES (
-    :REFMETAID,
-    :ATTACHMENT_NAME,
-    :ATTACHMENT_SIZE,
-    :ATTACHMENT_TYPE,
-    :ATTACHMENT,
-    :META_UNIVERSALID,
-    TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-    :CREATED_BY,
-    TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-    :MODIFIED_BY,
-    :DESCRIPTION,
-    :REFMETAID,
-    :ATTACHMENT_CATEGORY
-);
+loadSwitchService.prototype.upsertINTOSwitchAttachment =  function (
+  data,
+  callback
+) {
+  if (data == undefined || data.length == 0)
+    return console.error("No data found for insert SwitchAttachment");
+  let query = queryFactory.getQuery("syncSwitchAttachment");
+
+  let errors = [];
+
+  data.forEach((_data) => {
+
+    oraUtil.execute(query, _data, (err, results) => {
+      if (err) {
+        errors.push(err);
+      } else {
+        logger.info("switch attachment data sync successfully.");
+        //  return callback(null, results);
+      }
+    });
+})
+  if (errors.length !== 0) {
+   callback(errors);
+  }
+else
+callback(null,[])
+};
