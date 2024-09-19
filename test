@@ -1,5 +1,71 @@
-const rateLimit = require('axios-rate-limit');
+loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
+  //console.log(data.length);
+  //process.exit()
+  async function sleep(fn, data, ms) {
+    return new Promise((resolve) => setTimeout(() => resolve(fn(data)), ms));
+  }
+  if (!data || data.length === 0) {
+    return callback(null, []); // Return an empty array if no data is available
+  }
+  console.log(data.length, "switch ops_attachments");
+  // Helper function to process each item
+  let attachmentPromises = data.map(async (item) => {
+    let fileAttachment = {
+      REFMETAID: item["source_universalid"],
+      ATTACHMENT_NAME: item["file_name"],
+      ATTACHMENT_SIZE: item["file_size"],
+      ATTACHMENT_TYPE:item.file_name.split('.').pop(),// file_type,
+      META_UNIVERSALID: item["meta_universalID"],
+      CREATED_ON: item["meta_createdDate"]
+        ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss")
+        : null,
+      CREATED_BY: item["meta_createdBy"],
+      MODIFIED_ON: item["meta_lastUpdateDate"]
+        ? moment(item["meta_lastUpdateDate"]).format("YYYY-MM-DD HH:mm:ss")
+        : null,
+      MODIFIED_BY: item["meta_lastUpdateBy"],
+      ATTACHMENT_CATEGORY: item["source_class"]?.replace(/c2/gi, ""),
+      DESCRIPTION: item["description"],
+      ATTACHMENT: null,
+    };
 
-const http = rateLimit(axios.create(), { maxRequests: 1, perMilliseconds: 1000 });
+const url = `${config.opstracker.url}/C2Attachments/${item.source_universalid}/${encodeURIComponent(fileAttachment.ATTACHMENT_NAME)}`;
 
-console.error(`Error downloading file: ${url} - Message: ${error.message}`);
+     return await http({
+        url: url,
+        method: "GET",
+        responseType: "arraybuffer",
+        headers: {
+          Authorization: `${config.opstracker.authorization}`,
+        },
+      }).then(res=>{
+      if(res.data) {
+        console.log(`file downloading: ${url}`);
+        const file =  btoa(String.fromCharCode(...new Uint8Array(res.data)));
+        fileAttachment.ATTACHMENT = file
+                            return fileAttachment
+}}).catch (error=> {
+      console.error(`Error downloading file: ${url} `, error.message)
+        return null
+    })
+return  fileAttachment
+  });
+console.log(attachmentPromises);
+  const AttachmentData = []
+  // Wait for all promises to resolve
+  Promise.all(attachmentPromises)
+    .then((results) => {
+     console.log({results})
+
+}).catch(err=>console.error(err));
+console.log({AttachmentData})
+const validAttachmentData =  AttachmentData.filter(
+      (item) => item.ATTACHMENT !== null || !item
+    )
+    if(validAttachmentData.length!=0){
+      callback(null, validAttachmentData)
+    }
+    else{
+      callback("not valid file attachments")
+    }
+};
