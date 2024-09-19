@@ -1,4 +1,8 @@
 loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
+  async function sleep(fn, data, ms) {
+    return new Promise((resolve) => setTimeout(() => resolve(fn(data)), ms));
+  }
+
   if (!data || data.length === 0) {
     return callback(null, []); // Return an empty array if no data is available
   }
@@ -42,39 +46,30 @@ loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
         console.log(`File downloading: ${url}`);
         const file = btoa(String.fromCharCode(...new Uint8Array(res.data)));
         fileAttachment.ATTACHMENT = file;
-        return { status: 'fulfilled', value: fileAttachment }; // Wrap in an object
+        return fileAttachment; // Return the populated fileAttachment
       }
     } catch (error) {
       console.error(`Error downloading file: ${url}`, error.message);
-      return { status: 'rejected', reason: error.message }; // Wrap in an object
+      return null; // Return null if there's an error
     }
   });
 
-  // Wait for all promises to resolve or reject
-  Promise.allSettled(attachmentPromises)
+  // Wait for all promises to resolve
+  Promise.all(attachmentPromises)
     .then((results) => {
       console.log({ results });
 
-      // Filter valid attachments
-      const validAttachmentData = results
-        .filter(result => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value); // Extract the fulfilled values
+      // Filter valid attachments and populate AttachmentData
+      const validAttachmentData = results.filter(item => item !== null && item.ATTACHMENT !== null);
 
       if (validAttachmentData.length !== 0) {
         callback(null, validAttachmentData);
       } else {
-        callback("Not valid file attachments");
+        callback("not valid file attachments");
       }
-
-      // Log the reasons for any failures
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(`Error in attachment ${index + 1}:`, result.reason);
-        }
-      });
     })
     .catch(err => {
       console.error(err);
-      callback("An unexpected error occurred while processing attachments.");
+      callback("An error occurred while processing attachments.");
     });
 };
