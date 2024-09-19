@@ -1,20 +1,17 @@
 loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
-  //console.log(data.length);
-  //process.exit()
-  async function sleep(fn, data, ms) {
-    return new Promise((resolve) => setTimeout(() => resolve(fn(data)), ms));
-  }
   if (!data || data.length === 0) {
     return callback(null, []); // Return an empty array if no data is available
   }
+
   console.log(data.length, "switch ops_attachments");
+
   // Helper function to process each item
   let attachmentPromises = data.map(async (item) => {
     let fileAttachment = {
       REFMETAID: item["source_universalid"],
       ATTACHMENT_NAME: item["file_name"],
       ATTACHMENT_SIZE: item["file_size"],
-      ATTACHMENT_TYPE:item.file_name.split('.').pop(),// file_type,
+      ATTACHMENT_TYPE: item.file_name.split('.').pop(),
       META_UNIVERSALID: item["meta_universalID"],
       CREATED_ON: item["meta_createdDate"]
         ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss")
@@ -29,43 +26,55 @@ loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
       ATTACHMENT: null,
     };
 
-const url = `${config.opstracker.url}/C2Attachments/${item.source_universalid}/${encodeURIComponent(fileAttachment.ATTACHMENT_NAME)}`;
+    const url = `${config.opstracker.url}/C2Attachments/${item.source_universalid}/${encodeURIComponent(fileAttachment.ATTACHMENT_NAME)}`;
 
-     return await http({
+    try {
+      const res = await http({
         url: url,
         method: "GET",
         responseType: "arraybuffer",
         headers: {
           Authorization: `${config.opstracker.authorization}`,
         },
-      }).then(res=>{
-      if(res.data) {
-        console.log(`file downloading: ${url}`);
-        const file =  btoa(String.fromCharCode(...new Uint8Array(res.data)));
-        fileAttachment.ATTACHMENT = file
-                            return fileAttachment
-}}).catch (error=> {
-      console.error(`Error downloading file: ${url} `, error.message)
-        return null
-    })
-return  fileAttachment
-  });
-console.log(attachmentPromises);
-  const AttachmentData = []
-  // Wait for all promises to resolve
-  Promise.all(attachmentPromises)
-    .then((results) => {
-     console.log({results})
+      });
 
-}).catch(err=>console.error(err));
-console.log({AttachmentData})
-const validAttachmentData =  AttachmentData.filter(
-      (item) => item.ATTACHMENT !== null || !item
-    )
-    if(validAttachmentData.length!=0){
-      callback(null, validAttachmentData)
+      if (res.data) {
+        console.log(`File downloading: ${url}`);
+        const file = btoa(String.fromCharCode(...new Uint8Array(res.data)));
+        fileAttachment.ATTACHMENT = file;
+        return { status: 'fulfilled', value: fileAttachment }; // Wrap in an object
+      }
+    } catch (error) {
+      console.error(`Error downloading file: ${url}`, error.message);
+      return { status: 'rejected', reason: error.message }; // Wrap in an object
     }
-    else{
-      callback("not valid file attachments")
-    }
+  });
+
+  // Wait for all promises to resolve or reject
+  Promise.allSettled(attachmentPromises)
+    .then((results) => {
+      console.log({ results });
+
+      // Filter valid attachments
+      const validAttachmentData = results
+        .filter(result => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value); // Extract the fulfilled values
+
+      if (validAttachmentData.length !== 0) {
+        callback(null, validAttachmentData);
+      } else {
+        callback("Not valid file attachments");
+      }
+
+      // Log the reasons for any failures
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(`Error in attachment ${index + 1}:`, result.reason);
+        }
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      callback("An unexpected error occurred while processing attachments.");
+    });
 };
