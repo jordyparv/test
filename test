@@ -6,22 +6,20 @@ loadSwitchService.prototype.upsertINTOSwitchAttachment = function (data, callbac
   const query = queryFactory.getQuery("syncSwitchAttachment");
   const errors = [];
 
-  // Create an array of promises for each data item
   const promises = data.map((_data) => {
     return new Promise((resolve) => {
       oraUtil.execute(query, _data, (err, results) => {
         if (err) {
           errors.push(err);
-          resolve(); // Resolve the promise even if there's an error
+          resolve();
         } else {
           logger.info("Switch attachment data synced successfully.");
-          resolve(results); // Resolve with results
+          resolve(results);
         }
       });
     });
   });
 
-  // Wait for all promises to complete
   Promise.all(promises)
     .then(() => {
       if (errors.length !== 0) {
@@ -30,5 +28,5 @@ loadSwitchService.prototype.upsertINTOSwitchAttachment = function (data, callbac
         callback(null, []);
       }
     })
-    .catch(callback); // Handle any unexpected errors
+    .catch(callback);
 };
