@@ -1,75 +1,48 @@
-loadSwitchService.prototype.parseSwitchAttachment = function (data, callback) {
-  async function sleep(fn, data, ms) {
-    return new Promise((resolve) => setTimeout(() => resolve(fn(data)), ms));
-  }
-
-  if (!data || data.length === 0) {
-    return callback(null, []); // Return an empty array if no data is available
-  }
-
-  console.log(data.length, "switch ops_attachments");
-
-  // Helper function to process each item
-  let attachmentPromises = data.map(async (item) => {
-    let fileAttachment = {
-      REFMETAID: item["source_universalid"],
-      ATTACHMENT_NAME: item["file_name"],
-      ATTACHMENT_SIZE: item["file_size"],
-      ATTACHMENT_TYPE: item.file_name.split('.').pop(),
-      META_UNIVERSALID: item["meta_universalID"],
-      CREATED_ON: item["meta_createdDate"]
-        ? moment(item["meta_createdDate"]).format("YYYY-MM-DD HH:mm:ss")
-        : null,
-      CREATED_BY: item["meta_createdBy"],
-      MODIFIED_ON: item["meta_lastUpdateDate"]
-        ? moment(item["meta_lastUpdateDate"]).format("YYYY-MM-DD HH:mm:ss")
-        : null,
-      MODIFIED_BY: item["meta_lastUpdateBy"],
-      ATTACHMENT_CATEGORY: item["source_class"]?.replace(/c2/gi, ""),
-      DESCRIPTION: item["description"],
-      ATTACHMENT: null,
-    };
-
-    const url = `${config.opstracker.url}/C2Attachments/${item.source_universalid}/${encodeURIComponent(fileAttachment.ATTACHMENT_NAME)}`;
-
-    try {
-      const res = await http({
-        url: url,
-        method: "GET",
-        responseType: "arraybuffer",
-        headers: {
-          Authorization: `${config.opstracker.authorization}`,
-        },
-      });
-
-      if (res.data) {
-        console.log(`File downloading: ${url}`);
-        const file = btoa(String.fromCharCode(...new Uint8Array(res.data)));
-        fileAttachment.ATTACHMENT = file;
-        return fileAttachment; // Return the populated fileAttachment
-      }
-    } catch (error) {
-      console.error(`Error downloading file: ${url}`, error.message);
-      return null; // Return null if there's an error
-    }
-  });
-
-  // Wait for all promises to resolve
-  Promise.all(attachmentPromises)
-    .then((results) => {
-      console.log({ results });
-
-      // Filter valid attachments and populate AttachmentData
-      const validAttachmentData = results.filter(item => item !== null && item.ATTACHMENT !== null);
-
-      if (validAttachmentData.length !== 0) {
-        callback(null, validAttachmentData);
-      } else {
-        callback("not valid file attachments");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      callback("An error occurred while processing attachments.");
-    });
-};
+MERGE INTO OPSINV.SWITCH_ATTACHMENTS tgt
+USING (SELECT :META_UNIVERSALID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSALID)
+WHEN MATCHED THEN
+    UPDATE SET
+        tgt.REFMETAID = :REFMETAID,
+        tgt.ATTACHMENT_NAME = :ATTACHMENT_NAME,
+        tgt.ATTACHMENT_SIZE = :ATTACHMENT_SIZE,
+        tgt.ATTACHMENT_TYPE = :ATTACHMENT_TYPE,
+        tgt.ATTACHMENT = :ATTACHMENT,
+        tgt.CREATED_ON = TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.CREATED_BY = :CREATED_BY,
+        tgt.MODIFIED_ON = TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.MODIFIED_BY = :MODIFIED_BY,
+        tgt.DESCRIPTION = :DESCRIPTION,
+        tgt.SWITCH_UNID = :REFMETAID,
+        tgt.ATTACHMENT_CATEGORY = :ATTACHMENT_CATEGORY
+WHEN NOT MATCHED THEN
+    INSERT (
+        REFMETAID,
+        ATTACHMENT_NAME,
+        ATTACHMENT_SIZE,
+        ATTACHMENT_TYPE,
+        ATTACHMENT,
+        META_UNIVERSALID,
+        CREATED_ON,
+        CREATED_BY,
+        MODIFIED_ON,
+        MODIFIED_BY,
+        DESCRIPTION,
+        SWITCH_UNID,
+        ATTACHMENT_CATEGORY
+    )
+    VALUES (
+        :REFMETAID,
+        :ATTACHMENT_NAME,
+        :ATTACHMENT_SIZE,
+        :ATTACHMENT_TYPE,
+        :ATTACHMENT,
+        :META_UNIVERSALID,
+        TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        :CREATED_BY,
+        TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        :MODIFIED_BY,
+        :DESCRIPTION,
+        :REFMETAID,
+        :ATTACHMENT_CATEGORY
+    )
