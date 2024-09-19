@@ -1,27 +1,32 @@
-loadSwitchService.prototype.insertDataIntoDB = function (
-  query,
-  data,
-  callback
-) {
+loadSwitchService.prototype.insertDataIntoDB = function (query, data, callback) {
   if (!query) {
-    callback("Please Provide the query to perform on db");
+    return callback("Please provide the query to perform on the database");
   }
-  if (data.length === 0) {
-     callback("Please Provide the data to insert in db");
+  if (!data || data.length === 0) {
+    return callback("Please provide the data to insert into the database");
   }
-  let errors = [];
-  let sqlQuery = queryFactory.getQuery(query);
-  data.forEach((_data) => {
-    oraUtil.execute(sqlQuery, _data, (err, results) => {
-      if (err) {
-        errors.push(err);
-      }
+
+  const errors = [];
+  const sqlQuery = queryFactory.getQuery(query);
+
+  const promises = data.map((_data) => {
+    return new Promise((resolve) => {
+      oraUtil.execute(sqlQuery, _data, (err, results) => {
+        if (err) {
+          errors.push(err);
+        }
+        resolve();
+      });
     });
   });
 
-  if (errors.length !== 0) {
-  callback(errors);
-  }
-else
-   callback();
+  Promise.all(promises)
+    .then(() => {
+      if (errors.length !== 0) {
+        callback(errors);
+      } else {
+        callback(null);
+      }
+    })
+    .catch(callback);
 };
