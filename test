@@ -1,27 +1,34 @@
-loadSwitchService.prototype.upsertINTOSwitchAttachment =  function (
-  data,
-  callback
-) {
-  if (data == undefined || data.length == 0)
+loadSwitchService.prototype.upsertINTOSwitchAttachment = function (data, callback) {
+  if (data === undefined || data.length === 0) {
     return console.error("No data found for insert SwitchAttachment");
-  let query = queryFactory.getQuery("syncSwitchAttachment");
-
-  let errors = [];
-
-  data.forEach((_data) => {
-
-    oraUtil.execute(query, _data, (err, results) => {
-      if (err) {
-        errors.push(err);
-      } else {
-        logger.info("switch attachment data sync successfully.");
-        //  return callback(null, results);
-      }
-    });
-})
-  if (errors.length !== 0) {
-   callback(errors);
   }
-else
-callback(null,[])
+
+  const query = queryFactory.getQuery("syncSwitchAttachment");
+  const errors = [];
+
+  // Create an array of promises for each data item
+  const promises = data.map((_data) => {
+    return new Promise((resolve) => {
+      oraUtil.execute(query, _data, (err, results) => {
+        if (err) {
+          errors.push(err);
+          resolve(); // Resolve the promise even if there's an error
+        } else {
+          logger.info("Switch attachment data synced successfully.");
+          resolve(results); // Resolve with results
+        }
+      });
+    });
+  });
+
+  // Wait for all promises to complete
+  Promise.all(promises)
+    .then(() => {
+      if (errors.length !== 0) {
+        callback(errors);
+      } else {
+        callback(null, []);
+      }
+    })
+    .catch(callback); // Handle any unexpected errors
 };
