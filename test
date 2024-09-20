@@ -1,69 +1,49 @@
-WITH aggregatedNames AS (
-    SELECT
-        odsc.SWITCH_UNIVERSALID,
-        LISTAGG(
-            '{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"' || odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}', ','
-        ) WITHIN GROUP (ORDER BY odsc.fname, odsc.lname) AS tech_details
-    FROM ops_data_switch_contacts odsc
-    RIGHT JOIN SEC_CONTACT sc ON odsc.userid = sc.login_id
-    WHERE odsc.cfd_role = 'SWITCH_TECH'
-    GROUP BY odsc.SWITCH_UNIVERSALID
-),
 
-filterOPSE AS (
-    SELECT DISTINCT sie.location_id
-    FROM switch_elements odse
-    JOIN switch_installed_elements sie ON sie.ELEMENT_ID = odse.ELEMENT_ID
-    WHERE (
-        (:element_div IS NULL OR LOWER(odse.ELEMENT_DIVISION) LIKE LOWER(:element_div)) AND
-        (:element_dept IS NULL OR LOWER(odse.ELEMENT_DEPT) LIKE LOWER(:element_dept)) AND
-        (:element_sub_dept IS NULL OR LOWER(odse.ELEMENT_SUB_DEPT) LIKE LOWER(:element_sub_dept))
-    ) AND (
-        :startDate IS NULL OR :endDate IS NULL OR (sie.start_date >= :startDate AND sie.end_date <= :endDate)
+MERGE INTO OPSINV.SWITCH_ATTACHMENTS tgt
+USING (SELECT :META_UNIVERSALID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSALID)
+WHEN MATCHED THEN
+    UPDATE SET
+        tgt.REFMETAID = :REFMETAID,
+        tgt.ATTACHMENT_NAME = :ATTACHMENT_NAME,
+        tgt.ATTACHMENT_SIZE = :ATTACHMENT_SIZE,
+        tgt.ATTACHMENT_TYPE = :ATTACHMENT_TYPE,
+        tgt.ATTACHMENT = :ATTACHMENT,
+        tgt.CREATED_ON = TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.CREATED_BY = :CREATED_BY,
+        tgt.MODIFIED_ON = TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.MODIFIED_BY = :MODIFIED_BY,
+        tgt.DESCRIPTION = :DESCRIPTION,
+        tgt.SWITCH_UNID = :REFMETAID,
+        tgt.ATTACHMENT_CATEGORY = :ATTACHMENT_CATEGORY
+WHEN NOT MATCHED THEN
+    INSERT (
+        REFMETAID,
+        ATTACHMENT_NAME,
+        ATTACHMENT_SIZE,
+        ATTACHMENT_TYPE,
+        ATTACHMENT,
+        META_UNIVERSALID,
+        CREATED_ON,
+        CREATED_BY,
+        MODIFIED_ON,
+        MODIFIED_BY,
+        DESCRIPTION,
+        SWITCH_UNID,
+        ATTACHMENT_CATEGORY
     )
-)
-
-SELECT
-    ods.SWITCH_UNID,
-    ods.sub_market AS market,
-    ods.region AS sub_market,
-    ods.tech_details,
-    ods.address,
-    ods.total_count,
-    ods.NAME AS switch_name,
-    ods.XING_ID AS CND_ID,
-    ods.V_ZONE_NAME AS CALLOUT_ZONE,
-    ods.SWITCH_NETWORK_ID AS FUZE_ID
-FROM (
-    SELECT DISTINCT
-        ods.SWITCH_UNID,
-        ods.META_CREATEDDATE,
-        ods.market,
-        ods.sub_market,
-        ods.region,
-        ods.address,
-        ods.NAME,
-        ods.XING_ID,
-        ods.V_ZONE_NAME,
-        ods.SWITCH_NETWORK_ID,
-        ag.tech_details,
-        COUNT(*) OVER () AS total_count,
-        ROWNUM AS rnum
-    FROM aggregatedNames ag
-    RIGHT JOIN ops_data_switch ods ON ag.SWITCH_UNIVERSALID = ods.switch_unid
-    LEFT JOIN filterOPSE sie ON 
-        (:element_div IS NOT NULL OR
-         :element_dept IS NOT NULL OR
-         :element_sub_dept IS NOT NULL OR
-         :startDate IS NOT NULL OR
-         :endDate IS NOT NULL) AND sie.location_id = ods.locationid
-    WHERE
-        (:area IS NULL OR LOWER(ods.market) = LOWER(:area)) AND
-        (:name IS NULL OR LOWER(ods.NAME) LIKE LOWER(:name)) AND
-        (:switch_code IS NULL OR LOWER(ods.switch_code) LIKE LOWER(:switch_code)) AND
-        (:market IS NULL OR LOWER(ods.SUB_MARKET) = LOWER(:market)) AND
-        (:sub_market IS NULL OR LOWER(ods.REGION) = LOWER(:sub_market)) AND
-        (:vsm_name IS NULL OR LOWER(ods.vsm_switch) LIKE LOWER(:vsm_name))
-    ORDER BY ods.META_CREATEDDATE DESC
-) ods
-WHERE rnum BETWEEN :startRow AND :endRow;
+    VALUES (
+        :REFMETAID,
+        :ATTACHMENT_NAME,
+        :ATTACHMENT_SIZE,
+        :ATTACHMENT_TYPE,
+        :ATTACHMENT,
+        :META_UNIVERSALID,
+        TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        :CREATED_BY,
+        TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+        :MODIFIED_BY,
+        :DESCRIPTION,
+        :REFMETAID,
+        :ATTACHMENT_CATEGORY
+    )
