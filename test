@@ -51,7 +51,12 @@ FROM (
         ROWNUM AS rnum
     FROM aggregatedNames ag
     RIGHT JOIN ops_data_switch ods ON ag.SWITCH_UNIVERSALID = ods.switch_unid
-    LEFT JOIN filterOPSE sie ON sie.location_id = ods.locationid
+    LEFT JOIN filterOPSE sie ON 
+        (:element_div IS NOT NULL OR
+         :element_dept IS NOT NULL OR
+         :element_sub_dept IS NOT NULL OR
+         :startDate IS NOT NULL OR
+         :endDate IS NOT NULL) AND sie.location_id = ods.locationid
     WHERE
         (:area IS NULL OR LOWER(ods.market) = LOWER(:area)) AND
         (:name IS NULL OR LOWER(ods.NAME) LIKE LOWER(:name)) AND
@@ -59,14 +64,6 @@ FROM (
         (:market IS NULL OR LOWER(ods.SUB_MARKET) = LOWER(:market)) AND
         (:sub_market IS NULL OR LOWER(ods.REGION) = LOWER(:sub_market)) AND
         (:vsm_name IS NULL OR LOWER(ods.vsm_switch) LIKE LOWER(:vsm_name))
-        AND (
-            (:element_div IS NOT NULL OR
-             :element_dept IS NOT NULL OR
-             :element_sub_dept IS NOT NULL OR
-             :startDate IS NOT NULL OR
-             :endDate IS NOT NULL)
-            AND (sie.location_id IS NOT NULL OR :element_div IS NULL AND :element_dept IS NULL AND :element_sub_dept IS NULL AND :startDate IS NULL AND :endDate IS NULL)
-        )
     ORDER BY ods.META_CREATEDDATE DESC
 ) ods
 WHERE rnum BETWEEN :startRow AND :endRow;
