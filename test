@@ -1,29 +1,33 @@
-  INSERT INTO OPSINV.SWITCH_ATTACHMENTS (
-          REFMETAID,
-          ATTACHMENT_NAME,
-          ATTACHMENT_SIZE,
-          ATTACHMENT_TYPE,
-          ATTACHMENT,
-          META_UNIVERSALID,
-          CREATED_ON,
-          CREATED_BY,
-          MODIFIED_ON,
-          MODIFIED_BY,
-          DESCRIPTION,
-          SWITCH_UNID,
-          ATTACHMENT_CATEGORY
-      ) VALUES (
-          :REFMETAID,
-          :ATTACHMENT_NAME,
-          :ATTACHMENT_SIZE,
-          :ATTACHMENT_TYPE,
-          :ATTACHMENT,
-          :META_UNIVERSALID,
-          TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-          :CREATED_BY,
-          TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-          :MODIFIED_BY,
-          :DESCRIPTION,
-          :REFMETAID,
-          :ATTACHMENT_CATEGORY
-      )
+with aggregatedNames as(
+      select
+      odsc.SWITCH_UNIVERSALID,
+      listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}' ,',') within group (order by odsc.fname,odsc.lname) as tech_details
+      from ops_data_switch_contacts odsc
+      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
+      where odsc.cfd_role = 'SWITCH_TECH'
+      GROUP BY odsc.SWITCH_UNIVERSALID),
+
+filterOPSE as (select distinct sie.location_id from switch_elements odse 
+    join switch_installed_elements sie on sie.ELEMENT_ID = odse.ELEMENT_ID
+      where ((:element_div is null or lower(odse.ELEMENT_DIVISION) like lower(:element_div)) AND
+            (:element_dept is null or lower(odse.ELEMENT_DEPT) like lower(:element_dept)) AND
+            (:element_sub_dept is null or lower(odse.ELEMENT_SUB_DEPT) like lower(:element_sub_dept))) AND
+            (:startDate is null or :endDate is null or sie.start_date >= :startDate AND
+              sie.end_date <= :endDate))
+            
+      select  ods.SWITCH_UNID, ods.sub_market as market,ods.region as sub_market, ods.tech_details, ods.address, ods.total_count,ods.NAME as switch_name,ods.XING_ID AS CND_ID,ods.V_ZONE_NAME AS CALLOUT_ZONE,ods.SWITCH_NETWORK_ID AS FUZE_ID 
+      from
+      (select distinct ods.SWITCH_UNID,ODS.META_CREATEDDATE,  ods.market,ods.sub_market,ods.region,ods.address,ods.NAME,ods.XING_ID,ods.V_ZONE_NAME,ods.SWITCH_NETWORK_ID, ag.tech_details,count(*) over() as total_count, rownum as rnum from aggregatedNames ag
+    right join ops_data_switch ods
+      on ag.SWITCH_UNIVERSALID = ods.switch_unid
+     join filterOPSE sie  on sie.location_id = ods.locationid 
+      where
+      (:area is null or lower(ods.market) = lower(:area)) AND
+      (:name is null or lower(ods.NAME) like lower(:name)) AND
+      (:switch_code is null or lower(ods.switch_code) like lower(:switch_code)) AND
+      (:market is null or lower(ods.SUB_MARKET)=lower(:market)) AND
+      (:sub_market is null or lower(ods.REGION)=lower(:sub_market)) AND
+      (:vsm_name is null or lower(ods.vsm_switch) like lower(:vsm_name))
+      order by ods.META_CREATEDDATE DESC
+      ) ods
+      where rnum between :startRow and :endRow;
