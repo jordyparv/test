@@ -1,7 +1,20 @@
-              src.ATTACHMENT_CATEGORY)
-Error report -
-SQL Error: ORA-30926: unable to get a stable set of rows in the source tables
-30926. 00000 -  "unable to get a stable set of rows in the source tables"
-*Cause:    A stable set of rows could not be got because of large dml
-           activity or a non-deterministic where clause.
-*Action:   Remove any non-deterministic where clauses and reissue the dml.
+CREATE TABLE OPSINV.SWITCH_ATTACHMENTS (
+    REFMETAID VARCHAR2(255),
+    ATTACHMENT_NAME VARCHAR2(255),
+    ATTACHMENT_SIZE NUMBER,
+    ATTACHMENT_TYPE VARCHAR2(50),
+    ATTACHMENT CLOB,
+    META_UNIVERSALID VARCHAR2(255) CONSTRAINT meta_universalid_uk UNIQUE,
+    CREATED_ON DATE,
+    CREATED_BY VARCHAR2(255),
+    MODIFIED_ON DATE,
+    MODIFIED_BY VARCHAR2(255),
+    DESCRIPTION VARCHAR2(4000),
+    SWITCH_UNID VARCHAR2(255),
+    ATTACHMENT_CATEGORY VARCHAR2(50)
+);
+
+
+
+ALTER TABLE OPSINV.SWITCH_ATTACHMENTS
+ADD CONSTRAINT meta_universalid_uk UNIQUE (META_UNIVERSALID);
