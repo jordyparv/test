@@ -1,49 +1,164 @@
+const oracledb = require('oracledb');
 
-MERGE INTO OPSINV.SWITCH_ATTACHMENTS tgt
-USING (SELECT :META_UNIVERSALID AS id FROM dual) src
-ON (src.id = tgt.META_UNIVERSALID)
-WHEN MATCHED THEN
-    UPDATE SET
-        tgt.REFMETAID = :REFMETAID,
-        tgt.ATTACHMENT_NAME = :ATTACHMENT_NAME,
-        tgt.ATTACHMENT_SIZE = :ATTACHMENT_SIZE,
-        tgt.ATTACHMENT_TYPE = :ATTACHMENT_TYPE,
-        tgt.ATTACHMENT = :ATTACHMENT,
-        tgt.CREATED_ON = TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-        tgt.CREATED_BY = :CREATED_BY,
-        tgt.MODIFIED_ON = TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-        tgt.MODIFIED_BY = :MODIFIED_BY,
-        tgt.DESCRIPTION = :DESCRIPTION,
-        tgt.SWITCH_UNID = :REFMETAID,
-        tgt.ATTACHMENT_CATEGORY = :ATTACHMENT_CATEGORY
-WHEN NOT MATCHED THEN
-    INSERT (
-        REFMETAID,
-        ATTACHMENT_NAME,
-        ATTACHMENT_SIZE,
-        ATTACHMENT_TYPE,
-        ATTACHMENT,
-        META_UNIVERSALID,
-        CREATED_ON,
-        CREATED_BY,
-        MODIFIED_ON,
-        MODIFIED_BY,
-        DESCRIPTION,
-        SWITCH_UNID,
-        ATTACHMENT_CATEGORY
-    )
-    VALUES (
-        :REFMETAID,
-        :ATTACHMENT_NAME,
-        :ATTACHMENT_SIZE,
-        :ATTACHMENT_TYPE,
-        :ATTACHMENT,
-        :META_UNIVERSALID,
-        TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-        :CREATED_BY,
-        TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
-        :MODIFIED_BY,
-        :DESCRIPTION,
-        :REFMETAID,
-        :ATTACHMENT_CATEGORY
-    )
+async function mergeAttachment(data) {
+  let connection;
+
+  try {
+    connection = await oracledb.getConnection({
+      user: 'your_username',
+      password: 'your_password',
+      connectionString: 'your_connection_string'
+    });
+
+    // Step 1: Create a temporary table if it doesn't exist
+    await connection.execute(`
+      CREATE GLOBAL TEMPORARY TABLE OPSINV.TEMP_SWITCH_ATTACHMENTS (
+          REFMETAID VARCHAR2(255),
+          ATTACHMENT_NAME VARCHAR2(255),
+          ATTACHMENT_SIZE NUMBER,
+          ATTACHMENT_TYPE VARCHAR2(50),
+          ATTACHMENT BLOB,
+          META_UNIVERSALID VARCHAR2(255),
+          CREATED_ON DATE,
+          CREATED_BY VARCHAR2(255),
+          MODIFIED_ON DATE,
+          MODIFIED_BY VARCHAR2(255),
+          DESCRIPTION VARCHAR2(4000),
+          SWITCH_UNID VARCHAR2(255),
+          ATTACHMENT_CATEGORY VARCHAR2(50)
+      ) ON COMMIT PRESERVE ROWS
+    `);
+
+    // Step 2: Insert data into the temporary table
+    await connection.execute(`
+      INSERT INTO OPSINV.TEMP_SWITCH_ATTACHMENTS (
+          REFMETAID,
+          ATTACHMENT_NAME,
+          ATTACHMENT_SIZE,
+          ATTACHMENT_TYPE,
+          ATTACHMENT,
+          META_UNIVERSALID,
+          CREATED_ON,
+          CREATED_BY,
+          MODIFIED_ON,
+          MODIFIED_BY,
+          DESCRIPTION,
+          SWITCH_UNID,
+          ATTACHMENT_CATEGORY
+      ) VALUES (
+          :REFMETAID,
+          :ATTACHMENT_NAME,
+          :ATTACHMENT_SIZE,
+          :ATTACHMENT_TYPE,
+          :ATTACHMENT,
+          :META_UNIVERSALID,
+          TO_DATE(:CREATED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+          :CREATED_BY,
+          TO_DATE(:MODIFIED_ON, 'YYYY-MM-DD HH24:MI:SS'),
+          :MODIFIED_BY,
+          :DESCRIPTION,
+          :REFMETAID,
+          :ATTACHMENT_CATEGORY
+      )`, {
+        refmetaid: data.REFMETAID,
+        attachment_name: data.ATTACHMENT_NAME,
+        attachment_size: data.ATTACHMENT_SIZE,
+        attachment_type: data.ATTACHMENT_TYPE,
+        attachment: data.ATTACHMENT,  // Make sure this is a Buffer for BLOB
+        meta_universalid: data.META_UNIVERSALID,
+        created_on: data.CREATED_ON,
+        created_by: data.CREATED_BY,
+        modified_on: data.MODIFIED_ON,
+        modified_by: data.MODIFIED_BY,
+        description: data.DESCRIPTION,
+        attachment_category: data.ATTACHMENT_CATEGORY
+      });
+
+    // Step 3: Perform the MERGE operation
+    await connection.execute(`
+      MERGE INTO OPSINV.SWITCH_ATTACHMENTS tgt
+      USING OPSINV.TEMP_SWITCH_ATTACHMENTS src
+      ON (src.META_UNIVERSALID = tgt.META_UNIVERSALID)
+      WHEN MATCHED THEN
+          UPDATE SET
+              tgt.REFMETAID = src.REFMETAID,
+              tgt.ATTACHMENT_NAME = src.ATTACHMENT_NAME,
+              tgt.ATTACHMENT_SIZE = src.ATTACHMENT_SIZE,
+              tgt.ATTACHMENT_TYPE = src.ATTACHMENT_TYPE,
+              tgt.ATTACHMENT = src.ATTACHMENT,
+              tgt.CREATED_ON = src.CREATED_ON,
+              tgt.CREATED_BY = src.CREATED_BY,
+              tgt.MODIFIED_ON = src.MODIFIED_ON,
+              tgt.MODIFIED_BY = src.MODIFIED_BY,
+              tgt.DESCRIPTION = src.DESCRIPTION,
+              tgt.SWITCH_UNID = src.REFMETAID,
+              tgt.ATTACHMENT_CATEGORY = src.ATTACHMENT_CATEGORY
+      WHEN NOT MATCHED THEN
+          INSERT (
+              REFMETAID,
+              ATTACHMENT_NAME,
+              ATTACHMENT_SIZE,
+              ATTACHMENT_TYPE,
+              ATTACHMENT,
+              META_UNIVERSALID,
+              CREATED_ON,
+              CREATED_BY,
+              MODIFIED_ON,
+              MODIFIED_BY,
+              DESCRIPTION,
+              SWITCH_UNID,
+              ATTACHMENT_CATEGORY
+          )
+          VALUES (
+              src.REFMETAID,
+              src.ATTACHMENT_NAME,
+              src.ATTACHMENT_SIZE,
+              src.ATTACHMENT_TYPE,
+              src.ATTACHMENT,
+              src.META_UNIVERSALID,
+              src.CREATED_ON,
+              src.CREATED_BY,
+              src.MODIFIED_ON,
+              src.MODIFIED_BY,
+              src.DESCRIPTION,
+              src.REFMETAID,
+              src.ATTACHMENT_CATEGORY
+          )
+    `);
+
+    // Optional: Clean up (truncate) the temporary table if needed
+    await connection.execute(`TRUNCATE TABLE OPSINV.TEMP_SWITCH_ATTACHMENTS`);
+
+    console.log("Merge operation completed successfully.");
+  } catch (err) {
+    console.error("Error during merge operation:", err);
+  } finally {
+    if (connection) {
+      try {
+        // Release the connection back to the pool
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing the connection:", err);
+      }
+    }
+  }
+}
+
+// Example data
+const attachmentData = {
+  REFMETAID: '123',
+  ATTACHMENT_NAME: 'file.txt',
+  ATTACHMENT_SIZE: 123456,
+  ATTACHMENT_TYPE: 'text/plain',
+  ATTACHMENT: Buffer.from('Base64 data here', 'base64'),
+  META_UNIVERSALID: 'abc-123',
+  CREATED_ON: '2024-09-20 12:00:00',
+  CREATED_BY: 'user1',
+  MODIFIED_ON: '2024-09-20 12:00:00',
+  MODIFIED_BY: 'user1',
+  DESCRIPTION: 'Sample description',
+  ATTACHMENT_CATEGORY: 'Category1'
+};
+
+// Call the function to perform the merge
+mergeAttachment(attachmentData);
