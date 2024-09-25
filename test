@@ -1,8 +1,1 @@
-actual date 1980-01-01 00:00:00.000000
-saved in db 31-DEC-79 06.00.00.000000000 PM
-js conversion
-START_DATE:
-        moment(item["StartDate"]).utc().format("YYYY-MM-DD HH:mm:ss.SSSSSS")?.replace(/[T|Z]/g, (match) => match === 'T' ? ' ' : '') || null,
-
-query
-tgt.START_DATE = TO_TIMESTAMP(:START_DATE, 'YYYY-MM-DD HH24:MI:SS.FF'),
+TO_TIMESTAMP(FROM_TZ(TO_TIMESTAMP(:START_DATE, 'YYYY-MM-DD HH24:MI:SS.FF'), 'UTC'), 'UTC')
