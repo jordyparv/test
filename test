@@ -1,3 +1,6 @@
 mssql 2023-08-25 00:00:00.0
 js moment(item["StartDate"]).format("YYYY-MM-DD HH:mm:ss")
 oracle TO_DATE(:START_DATE, 'YYYY-MM-DD HH24:MI:SS')
+
+
+'2023-08-25T00:00:00.000Z'
