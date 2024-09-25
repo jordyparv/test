@@ -1,10 +1,1 @@
-'2023-08-25 00:00:00'
-
-
-TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-
-Error report -
-SQL Error: ORA-01841: (full) year must be between -4713 and +9999, and not be 0
-01841. 00000 -  "(full) year must be between -4713 and +9999, and not be 0"
-*Cause:    Illegal year entered
-*Action:   Input year in the specified range
+'YYYY-MM-DD HH24:MI:SS.FF'
