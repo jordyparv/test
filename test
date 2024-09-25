@@ -1,3 +1,2 @@
-https://verizon.webex.com/verizon/j.php?MTID=m7deb4a768369b6347ea161d7112eab4f
-
-GMmSik3k8K5
+TO_DATE(:MODIFIED_DATE, 'YYYY-MM-DD HH24:MI:SS')
+1980-01-01 00:00:00.0
