@@ -1,4 +1,16 @@
 ALTER TABLE IOPADMIN.SWITCH_INSTALLED_ELEMENTS
+ADD CONSTRAINT PK_SWITCH_INSTALLED_ELEMENTS_NEW PRIMARY KEY (LOCATION_ID, ELEMENT_ID)
+Error report -
+SQL Error: ORA-02437: cannot validate (IOPADMIN.PK_SWITCH_INSTALLED_ELEMENTS_NEW) - primary key violated
+02437. 00000 -  "cannot validate (%s.%s) - primary key violated"
+*Cause:    attempted to validate a primary key with duplicate values or null
+           values.
+*Action:   remove the duplicates and null values before enabling a primary
+           key.
+
+
+
+ALTER TABLE IOPADMIN.SWITCH_INSTALLED_ELEMENTS
 DROP CONSTRAINT PK_SWITCH_INSTALLED_ELEMENTS;
 
 
