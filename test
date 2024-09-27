@@ -1,18 +1,98 @@
-ALTER TABLE IOPADMIN.SWITCH_INSTALLED_ELEMENTS
-ADD CONSTRAINT PK_SWITCH_INSTALLED_ELEMENTS_NEW PRIMARY KEY (LOCATION_ID, ELEMENT_ID)
-Error report -
-SQL Error: ORA-02437: cannot validate (IOPADMIN.PK_SWITCH_INSTALLED_ELEMENTS_NEW) - primary key violated
-02437. 00000 -  "cannot validate (%s.%s) - primary key violated"
-*Cause:    attempted to validate a primary key with duplicate values or null
-           values.
-*Action:   remove the duplicates and null values before enabling a primary
-           key.
+Description
+Location ID
+Area
+Market
+Group
+Brand
+PeopleSoft Location Code
+MDGLC
+State Code
+LOCUS ID
+Switch Code
+Phone Number
+Main Switch
+Remedy Callout Zone Name
+Last Update
+vsm name
 
 
-
-ALTER TABLE IOPADMIN.SWITCH_INSTALLED_ELEMENTS
-DROP CONSTRAINT PK_SWITCH_INSTALLED_ELEMENTS;
-
-
-ALTER TABLE IOPADMIN.SWITCH_INSTALLED_ELEMENTS
-ADD CONSTRAINT PK_SWITCH_INSTALLED_ELEMENTS_NEW PRIMARY KEY (LOCATION_ID, ELEMENT_ID);
+SWITCH_UNID                    VARCHAR2(128) 
+MARKET                         VARCHAR2(128) 
+SUB_MARKET                     VARCHAR2(128) 
+REGION                         VARCHAR2(128) 
+NAME                           VARCHAR2(128) 
+LOCATIONID                     VARCHAR2(128) 
+LOCATION_TYPE                  VARCHAR2(128) 
+BRAND                          VARCHAR2(128) 
+STATE_CODE                     VARCHAR2(128) 
+SWITCH_CODE                    VARCHAR2(128) 
+SWITCH_CLLI                    VARCHAR2(128) 
+NSS_SWITCH                     VARCHAR2(128) 
+NSS_SWITCH2                    VARCHAR2(128) 
+NSS_SWITCH3                    VARCHAR2(128) 
+NSS_LOCATIONID                 VARCHAR2(128) 
+LUCENT_SWITCH                  VARCHAR2(128) 
+LUCENT_SWITCH2                 VARCHAR2(128) 
+LUCENT_SWITCH3                 VARCHAR2(128) 
+CA_SWITCH                      VARCHAR2(128) 
+CA_SWITCH2                     VARCHAR2(128) 
+CA_SWITCH3                     VARCHAR2(128) 
+REMEDY_SWITCH                  VARCHAR2(128) 
+REMEDY_SWITCH2                 VARCHAR2(128) 
+REMEDY_SWITCH3                 VARCHAR2(128) 
+REMEDY_SWITCH4                 VARCHAR2(128) 
+XING_ID                        VARCHAR2(128) 
+SWITCH_NETWORK_ID              VARCHAR2(128) 
+LTE_SWITCH                     VARCHAR2(128) 
+LTE_SWITCH2                    VARCHAR2(128) 
+LTE_SWITCH3                    VARCHAR2(128) 
+SWITCH_EMIS_ID                 VARCHAR2(128) 
+EMIS_SWITCH                    VARCHAR2(128) 
+EMIS_SWITCH2                   VARCHAR2(128) 
+EMIS_SWITCH3                   VARCHAR2(128) 
+V_ZONE_NAME                    VARCHAR2(50)  
+PS_LOC                         VARCHAR2(128) 
+DAY                            VARCHAR2(256) 
+TIMEZONE                       VARCHAR2(40)  
+SITE_COUNT                     VARCHAR2(128) 
+CREATED_ON                     TIMESTAMP(6)  
+SITE_FUNCTION                  VARCHAR2(20)  
+DESCRIPTION                    VARCHAR2(300) 
+SWITCH_STATUS                  VARCHAR2(128) 
+IS_RESTRICTED                  VARCHAR2(5)   
+LONGITUDE_DECIMAL              VARCHAR2(80)  
+LATITUDE_DECIMAL               VARCHAR2(80)  
+ADDRESS                        VARCHAR2(300) 
+CITY                           VARCHAR2(64)  
+ZIP                            VARCHAR2(16)  
+COUNTY                         VARCHAR2(64)  
+LOCUS_ID                       VARCHAR2(32)  
+MDG_ID                         VARCHAR2(16)  
+ENV_ALARM_NEXT_TEST            TIMESTAMP(6)  
+PHONE_NUMBER                   VARCHAR2(200) 
+ST                             VARCHAR2(10)  
+SWITCH                         VARCHAR2(128) 
+ROOT_DRIVE_CA                  VARCHAR2(64)  
+EMIS_LASTVERIFIEDON            TIMESTAMP(6)  
+EMIS_LASTVERIFIEDBY            VARCHAR2(16)  
+EMIS_NEXTVERIFICATION          TIMESTAMP(6)  
+AWS_MEC                        VARCHAR2(128) 
+DF_V_ZONE_NAME                 VARCHAR2(50)  
+DIRECTION                      CLOB          
+MEC_GOOGLE                     VARCHAR2(128) 
+MEC_MICROSOFT                  VARCHAR2(128) 
+REMEDY_SWITCH5                 VARCHAR2(128) 
+REMEDY_SWITCH_CZ               VARCHAR2(128) 
+SITE_STATUS                    VARCHAR2(128) 
+VSM_SWITCH                     VARCHAR2(128) 
+COMPANY_CODE                   VARCHAR2(128) 
+ENV_ALARMS_TESTED              TIMESTAMP(6)  
+META_LASTUPDATEDATE            TIMESTAMP(6)  
+META_CREATEDDATE               TIMESTAMP(6)  
+META_LASTUPDATEBY              VARCHAR2(26)  
+META_CREATEDBY                 VARCHAR2(26)  
+ENV_NOCC_MONITORED             CHAR(1)       
+PRIMARY_SWITCH_UNID            VARCHAR2(128) 
+PHYSICAL_LOCATION_PMS          VARCHAR2(128) 
+SWITCH_NO_PM                   VARCHAR2(128) 
+SITES_NO_PM                    VARCHAR2(128) 
