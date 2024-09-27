@@ -1,16 +1,4 @@
-function generateUpdateQuery(tableName, updateValues, keyColumns) {
-    // Construct the SET clause
-    const setClauses = Object.keys(updateValues).map(key => {
-        return `${key} = :${key}`;
-    }).join(', ');
-
-    // Construct the WHERE clause
-    const whereClauses = keyColumns.map(key => {
-        return `${key} = :${key}`;
-    }).join(' AND ');
-
-    // Combine all parts into the final SQL query
-    const sql = `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses};`;
-
-    return sql;
-}
+static isEmpty(val: any) {
+        let notValidValues = [null, '', undefined, 'null', true];
+        return Object.keys(val)?.length!==0 || val?.length!==0 || notValidValues.includes(val);
+    }
