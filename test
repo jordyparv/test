@@ -1,4 +1,9 @@
-static isEmpty(val: any) {
-        let notValidValues = [null, '', undefined, 'null', true];
-        return Object.keys(val)?.length!==0 || val?.length!==0 || notValidValues.includes(val);
+   static isEmpty(val: any): boolean {
+        const notValidValues = [null, '', undefined, 'null', true];
+
+        return (
+            (Array.isArray(val) && val.length === 0) || // Check for empty arrays
+            (typeof val === 'object' && Object.keys(val).length === 0) || // Check for empty objects
+            notValidValues.includes(val) // Check for other invalid values
+        );
     }
