@@ -1,9 +1,35 @@
-   static isEmpty(val: any): boolean {
-        const notValidValues = [null, '', undefined, 'null', true];
-
-        return (
-            (Array.isArray(val) && val.length === 0) || // Check for empty arrays
-            (typeof val === 'object' && Object.keys(val).length === 0) || // Check for empty objects
-            notValidValues.includes(val) // Check for other invalid values
-        );
-    }
+validEditableSwitchDetailsColumns: {
+    timezone:'TIMEZONE',
+    //'ST',
+    //'STATE_CODE',
+    nss_name1:'NSS_SWITCH',
+    nss_name2:'NSS_SWITCH2',
+    nss_name3:'NSS_SWITCH3',
+    lucent_name1:'LUCENT_SWITCH',
+    lucent_name2:'LUCENT_SWITCH2',
+    lucent_name3:'LUCENT_SWITCH3',
+    ca_name1:'CA_SWITCH',
+    ca_name2:'CA_SWITCH2',
+    ca_name3:'CA_SWITCH3',
+    fuze_compliance1:'EMIS_SWITCH',
+    fuze_compliance2:'EMIS_SWITCH2',
+    city:'CITY',
+    address:'ADDRESS',
+    zip:'ZIP',
+    county:'COUNTY',
+    longitude:'LONGITUDE_DECIMAL',
+    latitude:'LATITUDE_DECIMAL',
+    // callout_name:"V_ZONE_NAME",
+    vsm_name:"VSM_SWITCH",
+    phone:"PHONE_NUMBER",
+    desc:"DESCRIPTION",
+    main_switch:'PRIMARY_SWITCH_UNID',
+    remedy_name1:'REMEDY_SWITCH',
+    remedy_name2:'REMEDY_SWITCH2',
+    remedy_name3:'REMEDY_SWITCH3',
+    remedy_name4:'REMEDY_SWITCH4',
+    remedy_name5:'REMEDY_SWITCH5',
+    remedy_callout:'REMEDY_SWITCH_CZ',
+    last_alarm_test:'ENV_ALARMS_TESTED',
+    next_alarm_test:'ENV_ALARM_NEXT_TEST',
+    env_alarm_monitor:'ENV_NOCC_MONITORED'
