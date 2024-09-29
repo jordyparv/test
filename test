@@ -33,3 +33,44 @@ validEditableSwitchDetailsColumns: {
     last_alarm_test:'ENV_ALARMS_TESTED',
     next_alarm_test:'ENV_ALARM_NEXT_TEST',
     env_alarm_monitor:'ENV_NOCC_MONITORED'
+
+
+
+
+
+
+
+{
+    "timezone": "America/New_York",
+    "nss_name1": "Switch_A",
+    "nss_name2": "Switch_B",
+    "nss_name3": "Switch_C",
+    "lucent_name1": "Lucent_Switch_A",
+    "lucent_name2": "Lucent_Switch_B",
+    "lucent_name3": "Lucent_Switch_C",
+    "ca_name1": "CA_Switch_A",
+    "ca_name2": "CA_Switch_B",
+    "ca_name3": "CA_Switch_C",
+    "fuze_compliance1": "Fuze_Switch_A",
+    "fuze_compliance2": "Fuze_Switch_B",
+    "city": "Sample City",
+    "address": "123 Sample St",
+    "zip": "12345",
+    "county": "Sample County",
+    "longitude": -74.0060,
+    "latitude": 40.7128,
+    "vsm_name": "VSM_Switch_A",
+    "phone": "+1234567890",
+    "desc": "This is a sample description for the switch.",
+    "main_switch": "Primary_Switch_001",
+    "remedy_name1": "Remedy_Switch_A",
+    "remedy_name2": "Remedy_Switch_B",
+    "remedy_name3": "Remedy_Switch_C",
+    "remedy_name4": "Remedy_Switch_D",
+    "remedy_name5": "Remedy_Switch_E",
+    "remedy_callout": "Remedy_Switch_CZ",
+    "last_alarm_test": "2024-09-01T00:00:00Z",
+    "next_alarm_test": "2024-12-01T00:00:00Z",
+    "env_alarm_monitor": "Monitored"
+}
+
