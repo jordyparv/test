@@ -1,548 +1,62 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SwitchController } from './switch.controller';
-import { SwitchService } from './switch.service';
-import { Request, Response } from 'express';
-import { Controller, HttpStatus, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-
-interface FileAttachment {
-  switchUnid:string, 
-  refmetaId:string
-  filename: string;
-  file_size: Number;
-  file_type:string;
-  file_description: string;
-  file: string; // base64 encoded file content
-  }
-  
-  interface UploadDto {
-  updated_by: string;
-  files: FileAttachment[];
-  }
-
-describe('SwitchController', () => {
-  let switchController: SwitchController;
-  let switchService: SwitchService;
-  const mockSwitchService = {
-    getSwitchDetails: jest.fn(),
-    getSwitchesByTech: jest.fn(),
-    getSwitchesByMgr: jest.fn(),
-    getSwitchesByDir: jest.fn(),
-    IopSwitchContact: jest.fn(),
-    IopSwitchDetail: jest.fn(),
-    getElementsBySwitchId: jest.fn(),
-    SwitchFileAttachments: jest.fn(),
-    insertFiles: jest.fn(),
-    getMinetype: jest.fn(),
-    deleteAttachment: jest.fn(),
-    getSwitchList: jest.fn(),
-    searchByUsers: jest.fn(),
-    searchByElements: jest.fn(),
-    searchByLocations: jest.fn(),
-  };
-  const mockRequest = (params: object = {}): Request =>
-    ({
-      params,
-    } as unknown as Request);
-  const mockResponse = (): Response => {
-    const res: Partial<Response> = {};
-    res.status = jest.fn().mockReturnThis();
-    res.json = jest.fn().mockReturnThis();
-    res.send = jest.fn().mockReturnThis();
-    return res as Response;
-  };
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [SwitchController],
-      providers: [
-        {
-          provide: SwitchService,
-          useValue: mockSwitchService,
-        },
-      ],
-    }).compile();
-    switchController = module.get<SwitchController>(SwitchController);
-    switchService = module.get<SwitchService>(SwitchService);
-  });
-  it('should be defined', () => {
-    expect(switchController).toBeDefined();
-  });
-  describe('getSiteDetails', () => {
-    it('should log info and call getSwitchDetails', async () => {
-      const req = mockRequest({ switchUnid: '123' });
-      const res = mockResponse();
-      jest.spyOn(switchService, 'getSwitchDetails').mockResolvedValueOnce(undefined);
-      await switchController.getSiteDetails(req, res);
-      expect(switchService.getSwitchDetails).toHaveBeenCalledWith(req, res);
-    });
-    it('should handle errors in getSiteDetails', async () => {
-      const req = mockRequest({ switchUnid: '123' });
-      const res = mockResponse();
-      const error = new Error('Service error');
-      jest.spyOn(switchService, 'getSwitchDetails').mockImplementation(() => { throw error; });
-      await switchController.getSiteDetails(req, res);
-      expect(switchService.getSwitchDetails).toHaveBeenCalledWith(req, res);
-      expect(res.json).toHaveBeenCalledWith('error in getSwitchDetails');
-    });
-  });
-  describe('getSitesByTech', () => {
-    it('should log info and call getSwitchesByTech', async () => {
+describe('SwitchController - Additional Methods', () => {
+  describe('getSwitchDetailForTypeAhead', () => {
+    it('should call getSwitchDetailForTypeAhead and return the result', async () => {
       const req = mockRequest();
       const res = mockResponse();
-      jest.spyOn(switchService, 'getSwitchesByTech').mockResolvedValueOnce(undefined);
-      await switchController.getSitesByTech('tech123', req, res);
-      expect(switchService.getSwitchesByTech).toHaveBeenCalledWith(req, res);
+      const mockData = { detail: 'switch detail' };
+
+      jest.spyOn(switchService, 'getSwitchDetailForTypeAhead').mockResolvedValueOnce(mockData);
+
+      await switchController.getSwitchDetailForTypeAhead(req, res);
+
+      expect(switchService.getSwitchDetailForTypeAhead).toHaveBeenCalledWith(req, res);
+      expect(res.json).toHaveBeenCalledWith(mockData);
     });
-    it('should handle errors in getSitesByTech', async () => {
+
+    it('should handle errors in getSwitchDetailForTypeAhead', async () => {
       const req = mockRequest();
       const res = mockResponse();
       const error = new Error('Service error');
-      jest.spyOn(switchService, 'getSwitchesByTech').mockImplementation(() => { throw error; });
-      await switchController.getSitesByTech('tech123', req, res);
-      expect(switchService.getSwitchesByTech).toHaveBeenCalledWith(req, res);
-    });
-  });
-  describe('getSitesByMgr', () => {
-    it('should log info and call getSwitchesByMgr', async () => {
-      const req = mockRequest({ mgrId: 'mgr123' });
-      const res = mockResponse();
-      jest.spyOn(switchService, 'getSwitchesByMgr').mockResolvedValueOnce(undefined);
-      await switchController.getSitesByMgr(req, res);
-      expect(switchService.getSwitchesByMgr).toHaveBeenCalledWith(req, res);
-    });
-    it('should handle errors in getSitesByMgr', async () => {
-      const req = mockRequest({ mgrId: 'mgr123' });
-      const res = mockResponse();
-      const error = new Error('Service error');
-      jest.spyOn(switchService, 'getSwitchesByMgr').mockImplementation(() => { throw error; });
-      await switchController.getSitesByMgr(req, res);
-      expect(switchService.getSwitchesByMgr).toHaveBeenCalledWith(req, res);
-      expect(res.json).toHaveBeenCalledWith('error in getSwitchesByMgr');
-    });
-  });
-  describe('getSitesByDir', () => {
-    it('should log info and call getSwitchesByDir', async () => {
-      const req = mockRequest({ dirId: 'dir123' });
-      const res = mockResponse();
-      jest.spyOn(switchService, 'getSwitchesByDir').mockResolvedValueOnce(undefined);
-      await switchController.getSitesByDir(req, res);
-      expect(switchService.getSwitchesByDir).toHaveBeenCalledWith(req, res);
-    });
-    it('should handle errors in getSitesByDir', async () => {
-      const req = mockRequest({ dirId: 'dir123' });
-      const res = mockResponse();
-      const error = new Error('Service error');
-      jest.spyOn(switchService, 'getSwitchesByDir').mockImplementation(() => { throw error; });
-      await switchController.getSitesByDir(req, res);
-      expect(switchService.getSwitchesByDir).toHaveBeenCalledWith(req, res);
-      expect(res.json).toHaveBeenCalledWith('error in getSwitchesByDir');
-    });
-  });
-  describe('getIopSwitchContact', () => {
-    it('should call IopSwitchContact and send the result', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const mockData = { contact: 'John Doe' };
-      jest.spyOn(switchService, 'IopSwitchContact').mockResolvedValueOnce(mockData);
-      await switchController.getIopSwitchContact(req, res, 'switch123');
-      expect(switchService.IopSwitchContact).toHaveBeenCalledWith('switch123');
-      expect(res.send).toHaveBeenCalledWith(mockData);
-    });
-    it('should handle errors in getIopSwitchContact', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const error = new Error('Service error');
-      jest.spyOn(switchService, 'IopSwitchContact').mockRejectedValueOnce(error);
-      await switchController.getIopSwitchContact(req, res, 'switch123');
-      expect(switchService.IopSwitchContact).toHaveBeenCalledWith('switch123');
-      expect(res.json).toHaveBeenCalledWith(error);
-    });
-  });
-  describe('IopSwitchDetails', () => {
-    it('should call IopSwitchDetail and send the result', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const mockData = { switchdetails: 'Switch details' };
-      jest.spyOn(switchService, 'IopSwitchDetail').mockResolvedValueOnce(mockData);
-      await switchController.IopSwitchDetails(req, res, 'switch123');
-      expect(switchService.IopSwitchDetail).toHaveBeenCalledWith('switch123');
-      expect(res.send).toHaveBeenCalledWith(mockData);
-    });
-    it('should handle errors in IopSwitchDetails', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const error = new Error('Service error');
-      jest.spyOn(switchService, 'IopSwitchDetail').mockRejectedValueOnce(error);
-      await switchController.IopSwitchDetails(req, res, 'switch123');
-      expect(switchService.IopSwitchDetail).toHaveBeenCalledWith('switch123');
-      expect(res.json).toHaveBeenCalledWith(error);
-    });
-  });
- 
-//FILEATTACHMENT
-  describe('IopSwitchFileAttachments', () => {
-    it('should log info and call IopSwitchFileAttachments', async () => {
-      const req = mockRequest({ switchUnid: '123'});
-      const res = mockResponse();
-      jest.spyOn(switchService, 'getSwitchDetails').mockResolvedValueOnce(undefined);
-      await switchController.IopSwitchFileAttachments(req, res,  '123');
-      expect(switchService.SwitchFileAttachments).toHaveBeenCalledWith( '123');
-    });
-   
-     it('should handle errors in IopSwitchFileAttachments', async () => {
-          const req = mockRequest();
-          const res = mockResponse();
-          const error = new Error('Service error');
-          jest.spyOn(switchService, 'SwitchFileAttachments').mockRejectedValueOnce(error);
-          await switchController.IopSwitchFileAttachments(req, res, '123');
-          expect(switchService.SwitchFileAttachments).toHaveBeenCalledWith('123');
-          expect(res.json).toHaveBeenCalledWith(error);
-        });
-  });
 
-  //inserfiles
-  describe('uploadFiles', () => {
-    it('should return 400 if no files are provided', async () => {
-      const reqBody: UploadDto = { updated_by: 'user1', files: [] };
-      const res = mockResponse();
+      jest.spyOn(switchService, 'getSwitchDetailForTypeAhead').mockRejectedValueOnce(error);
 
-      await expect(switchController.uploadFiles(reqBody, res)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
+      await switchController.getSwitchDetailForTypeAhead(req, res);
 
-    it('should call insertFiles and return 201 on success', async () => {
-      const reqBody: UploadDto = {
-        updated_by: 'user1',
-        files: [
-          {
-            switchUnid: '123',
-            refmetaId: 'abc',
-            filename: 'file1.txt',
-            file_size: 12345,
-            file_type:'png',
-            file_description: 'test file',
-            file: 'data:text/plain;base64,SGVsbG8gV29ybGQ=',
-          },
-        ],
-      };
-      const res = mockResponse();
-
-      mockSwitchService.insertFiles.mockResolvedValueOnce(true);
-
-      await switchController.uploadFiles(reqBody, res);
-
-      expect(mockSwitchService.insertFiles).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            switchUnid: '123',
-            refmetaId: 'abc',
-            attachmentName: 'file1.txt',
-          }),
-        ]),
-      );
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.send).toHaveBeenCalledWith({
-        result_code: 0,
-        message: 'Record updated successfully',
-      });
-    });
-
-    it('should return 500 if insertFiles throws an error', async () => {
-      const reqBody: UploadDto = {
-        updated_by: 'user1',
-        files: [
-          {
-            switchUnid: '123',
-            refmetaId: 'abc',
-            filename: 'file1.txt',
-            file_size: 12345,
-            file_type:'png',
-            file_description: 'test file',
-            file: 'data:text/plain;base64,SGVsbG8gV29ybGQ=',
-          },
-        ],
-      };
-      const res = mockResponse();
-
-      mockSwitchService.insertFiles.mockRejectedValueOnce(
-        new Error('Insert failed'),
-      );
-
-      await switchController.uploadFiles(reqBody, res);
-
+      expect(switchService.getSwitchDetailForTypeAhead).toHaveBeenCalledWith(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.send).toHaveBeenCalledWith({
-        result_code: 1,
-        message: 'Insert failed',
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'error while getting switch details typeahead',
       });
     });
   });
 
-  describe('getMimeType', () => {
-    it('should return the correct mime type', () => {
-      const base64String = 'data:text/plain;base64,SGVsbG8gV29ybGQ=';
-      const mimeType = switchController['getMimeType'](base64String);
-      expect(mimeType).toEqual('text/plain');
-    });
-
-    it('should return application/octet-stream if no mime type is found', () => {
-      const base64String = 'SGVsbG8gV29ybGQ=';
-      const mimeType = switchController['getMimeType'](base64String);
-      expect(mimeType).toEqual('application/octet-stream');
-    });
-  });
-  //DELETEATTACHMENT
-  describe('deleteAttachment', () => {
-    it('should return a success response when deletion is successful', async () => {
-      const metauniversalId = '1234';
-      const mockRes = mockResponse();
-      const result = {
-        message: 'Attachment deleted successfully',
-        metauniversalId,
-      };
-
-      mockSwitchService.deleteAttachment.mockResolvedValue(result);
-
-      await switchController.deleteAttachment(metauniversalId, mockRes);
-
-      expect(mockSwitchService.deleteAttachment).toHaveBeenCalledWith(metauniversalId);
-      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.OK,
-        message: result.message,
-        metauniversalId: result.metauniversalId,
-      });
-    });
-    it('should return a NotFound response if the attachment is not found', async () => {
-      const metauniversalId = '1234';
-      const mockRes = mockResponse();
-      const error = new NotFoundException('Attachment not found');
-
-      mockSwitchService.deleteAttachment.mockRejectedValue(error);
-
-      await switchController.deleteAttachment(metauniversalId, mockRes);
-
-      expect(mockSwitchService.deleteAttachment).toHaveBeenCalledWith(metauniversalId);
-      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.NOT_FOUND,
-        message: error.message,
-      });
-    });
-
-    it('should return a BadRequest response if the request is invalid', async () => {
-      const metauniversalId = 'invalid_id';
-      const mockRes = mockResponse();
-      const error = new BadRequestException('Invalid metauniversalId');
-
-      mockSwitchService.deleteAttachment.mockRejectedValue(error);
-
-      await switchController.deleteAttachment(metauniversalId, mockRes);
-
-      expect(mockSwitchService.deleteAttachment).toHaveBeenCalledWith(metauniversalId);
-      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: error.message,
-      });
-    });
-
-    it('should return an InternalServerError response for unhandled exceptions', async () => {
-      const metauniversalId = '1234';
-      const mockRes = mockResponse();
-      const error = new Error('Something went wrong');
-
-      mockSwitchService.deleteAttachment.mockRejectedValue(error);
-
-      await switchController.deleteAttachment(metauniversalId, mockRes);
-
-      expect(mockSwitchService.deleteAttachment).toHaveBeenCalledWith(metauniversalId);
-      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Internal server error',
-      });
-    });
-  });
-  describe("Search Users", () => {
-    const searchText = "users";
-    it("should call searchByUsers and send the result", async () => {
-      const mockData = ["User 1", "User 2"];
-      jest
-        .spyOn(switchService, "searchByUsers")
-        .mockResolvedValueOnce(mockData);
-      const result = await switchController.searchByUsers(searchText);
-      expect(switchService.searchByUsers).toHaveBeenCalledWith(searchText);
-      expect(result).toEqual(mockData);
-    });
-    it("should handle errors in searchByUsers", async () => {
-      const error = new Error("Service error");
-      jest.spyOn(switchService, "searchByUsers").mockRejectedValueOnce(error);
-      await expect(switchController.searchByUsers(searchText)).rejects.toThrow(
-        error
-      );
-      expect(switchService.searchByUsers).toHaveBeenCalledWith(searchText);
-    });
-  });
-  describe("Search Elements", () => {
-    const searchText = "element";
-    it("should call searchByElements and send the result", async () => {
-      const mockData = ["Element 1", "Element 2"];
-      jest
-        .spyOn(switchService, "searchByElements")
-        .mockResolvedValueOnce(mockData);
-      const result = await switchController.searchByElements(searchText);
-      expect(switchService.searchByElements).toHaveBeenCalledWith(searchText);
-      expect(result).toEqual(mockData);
-    });
-    it("should handle errors in searchByElements", async () => {
-      const error = new Error("Service error");
-      jest
-        .spyOn(switchService, "searchByElements")
-        .mockRejectedValueOnce(error);
-      await expect(
-        switchController.searchByElements(searchText)
-      ).rejects.toThrow(error);
-      expect(switchService.searchByElements).toHaveBeenCalledWith(searchText);
-    });
-  });
-  describe("Search Locations", () => {
-    it("should call searchByLocations and send the result", async () => {
-      const mockData = ["Location 1", "Location 2"];
-      jest
-        .spyOn(switchService, "searchByLocations")
-        .mockResolvedValueOnce(mockData);
-      const result = await switchController.searchByLocations(
-        "area",
-        "market",
-        "submarket"
-      );
-      expect(switchService.searchByLocations).toHaveBeenCalledWith(
-        "area",
-        "market",
-        "submarket"
-      );
-      expect(result).toEqual(mockData);
-    });
-    it("should handle errors in searchByLocations", async () => {
-      const error = new Error("Service error");
-      jest
-        .spyOn(switchService, "searchByLocations")
-        .mockRejectedValueOnce(error);
-      await expect(
-        switchController.searchByLocations("area", "market", "submarket")
-      ).rejects.toThrow(error);
-      expect(switchService.searchByLocations).toHaveBeenCalledWith(
-        "area",
-        "market",
-        "submarket"
-      );
-    });
-  });
-  describe("getSwitchList", () => {
-    it("should return data when service is successful", async () => {
-      const req = mockRequest();
+  describe('editSwitchDetails', () => {
+    it('should call editSwitchDetails and return success response', async () => {
+      const req = mockRequest({ params: { switch_unid: '123' } });
       const res = mockResponse();
 
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: {
-          title: "switch list",
-          listcount: 0,
-          listitems: [],
-        },
-      };
+      jest.spyOn(switchService, 'editSwitchDetails').mockResolvedValueOnce(undefined);
 
-      jest.spyOn(switchService, "getSwitchList").mockResolvedValue(mockResult);
+      await switchController.editSwitchDetails(req, res);
 
-      const result = await switchController.getSwitchList(req, res);
-      expect(switchService.getSwitchList).toHaveBeenCalledWith(req, res);
-      expect(result).toEqual(mockResult);
+      expect(switchService.editSwitchDetails).toHaveBeenCalledWith(req, res);
+      expect(res.send).toHaveBeenCalledWith({ message: 'Switch updated successfully' }); // Assuming a success message
     });
 
-    it("should handle errors", async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-
-      const error = new Error("Service error");
-      jest.spyOn(switchService, "getSwitchList").mockRejectedValue(error);
-      await expect(switchController.getSwitchList(req, res)).rejects.toThrow(
-        error
-      );
-      expect(switchService.getSwitchList).toHaveBeenCalledWith(req, res);
-    });
-  });
-
-  describe('IOP Switch Installed Elements', () => {
-    it("should return list of elements for switch", async () => {
-      const switchUnid = "123456";
-      const req = mockRequest();
-      const res = mockResponse();
-      const expectedResult = [{
-        ELEMENT_ID: "1",
-        ELEMENT_NAME: "Element 1",
-        NOTIFY_OVERRIDE: "0",
-        subElements: []
-      }];
-      jest.spyOn(switchService, 'getElementsBySwitchId').mockResolvedValueOnce(expectedResult);
-      await switchController.getElementsBySwitchId(req, res, switchUnid);
-      expect(switchService.getElementsBySwitchId).toHaveBeenCalledWith('123456');
-      expect(res.send).toHaveBeenCalledWith(expectedResult);
-    });
-    it("should handle error scenario of installed elements", async () => {
-      const switchUnid = "123456";
-      const req = mockRequest();
+    it('should handle errors in editSwitchDetails', async () => {
+      const req = mockRequest({ params: { switch_unid: '123' } });
       const res = mockResponse();
       const error = new Error('Service error');
-      jest.spyOn(switchService, 'getElementsBySwitchId').mockRejectedValueOnce(error);
-      await switchController.getElementsBySwitchId(req, res, switchUnid);
-      expect(res.json).toHaveBeenCalledWith(error);
+
+      jest.spyOn(switchService, 'editSwitchDetails').mockRejectedValueOnce(error);
+
+      await switchController.editSwitchDetails(req, res);
+
+      expect(switchService.editSwitchDetails).toHaveBeenCalledWith(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'error while updating switch',
+      });
     });
-    it("should return empty list when switchId is empty", async () => {
-      const switchUnid = "";
-      const req = mockRequest();
-      const res = mockResponse();
-      const expectedResult = [{
-        ELEMENT_ID: "1",
-        ELEMENT_NAME: "Element 1",
-        NOTIFY_OVERRIDE: "0",
-        subElements: []
-      }];
-      jest.spyOn(switchService, 'getElementsBySwitchId').mockResolvedValueOnce(expectedResult);
-      await switchController.getElementsBySwitchId(req, res, switchUnid);
-      expect(res.send).toHaveBeenCalledWith([]);
-    })
-  })
+  });
 });
-
-
-
--------
-//controller
-
-@Get("/switch/detail/filter")
-  async getSwitchDetailForTypeAhead(@Req() req:Request, @Res() res:Response){
-    try {
-      await this.switchService.getSwitchDetailForTypeAhead(req,res)    
-    } catch (error) {
-      logger.error("error while getting switch details typeahead",error)
-      console.error({errorMessage:error.message})
-      return res.status(500).json({
-        error:"error while getting switch details typeahead"
-      })
-    }
-  }  
-  @Put('/switch/edit/:switch_unid')
-  async editSwitchDetails(@Req() req:Request, @Res() res:Response){
-    try {
-      await this.switchService.editSwitchDetails(req,res)    
-    } catch (error) {
-      logger.error("error while updating switch",error)
-      console.error({errorMessage:error.message})
-      return res.status(500).json({
-        error:"error while updating switch"
-      })
-    }
-  }
-//
