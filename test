@@ -1,1 +1,30 @@
-replace(/[^a-zA-Z0-9 \.,_\-()&\/:;#@!+*?~%^=|'"`<>]/gim, "");
+SELECT DISTINCT remedy_switch 
+FROM (
+    SELECT remedy_switch 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch IS NOT NULL AND remedy_switch LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch2 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch2 IS NOT NULL AND remedy_switch2 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch3 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch3 IS NOT NULL AND remedy_switch3 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch4 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch4 IS NOT NULL AND remedy_switch4 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch5 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch5 IS NOT NULL AND remedy_switch5 LIKE :REMEDY_SWITCH
+) AS combined_remedy_switches;
