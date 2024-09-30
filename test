@@ -515,3 +515,34 @@ describe('SwitchController', () => {
     })
   })
 });
+
+
+
+-------
+//controller
+
+@Get("/switch/detail/filter")
+  async getSwitchDetailForTypeAhead(@Req() req:Request, @Res() res:Response){
+    try {
+      await this.switchService.getSwitchDetailForTypeAhead(req,res)    
+    } catch (error) {
+      logger.error("error while getting switch details typeahead",error)
+      console.error({errorMessage:error.message})
+      return res.status(500).json({
+        error:"error while getting switch details typeahead"
+      })
+    }
+  }  
+  @Put('/switch/edit/:switch_unid')
+  async editSwitchDetails(@Req() req:Request, @Res() res:Response){
+    try {
+      await this.switchService.editSwitchDetails(req,res)    
+    } catch (error) {
+      logger.error("error while updating switch",error)
+      console.error({errorMessage:error.message})
+      return res.status(500).json({
+        error:"error while updating switch"
+      })
+    }
+  }
+//
