@@ -1,11 +1,83 @@
-     else Eif(!CommonUtil.isEmpty(remedy_switch)){
-        filterObj.key = 'remedy_switch'
-        filterObj.value = getRWildVal(CommonUtil.sanitizeString(remedy_switch))
-      }
-      else if(!CommonUtil.isEmpty(remedy_callout)){
-        filterObj.key = 'remedy_callout'
-        filterObj.value = getRWildVal(CommonUtil.sanitizeString(remedy_callout))
-      }
-      else{
-        return res.status(HttpStatus.OK).json({
-          statusCode: HttpStatus.OK,
+
+  it("should handle remedy_switch correctly", async () => {
+    const req = {
+      query: {
+        remedy_switch: "testSwitch",
+      },
+    } as any;
+    const res = mockResponse();
+
+    // Mock the CommonUtil.sanitizeString function
+    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("testSwitch");
+    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
+
+    await service.getSwitchDetailForTypeAhead(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+    expect(res.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.OK,
+      message: "data fetched successfully!",
+      data: [],
+    });
+    expect(getRWildVal).toHaveBeenCalledWith("testSwitch");
+  });
+
+  it("should handle remedy_callout correctly", async () => {
+    const req = {
+      query: {
+        remedy_callout: "testCallout",
+      },
+    } as any;
+    const res = mockResponse();
+
+    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("testCallout");
+    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
+
+    await service.getSwitchDetailForTypeAhead(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+    expect(res.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.OK,
+      message: "data fetched successfully!",
+      data: [],
+    });
+    expect(getRWildVal).toHaveBeenCalledWith("testCallout");
+  });
+
+  it("should handle main_switch_name correctly", async () => {
+    const req = {
+      query: {
+        main_switch_name: "mainSwitch",
+      },
+    } as any;
+    const res = mockResponse();
+
+    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("mainSwitch");
+    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
+
+    await service.getSwitchDetailForTypeAhead(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+    expect(res.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.OK,
+      message: "data fetched successfully!",
+      data: [],
+    });
+    expect(getRWildVal).toHaveBeenCalledWith("mainSwitch");
+  });
+
+  it("should return empty data when no filters are provided", async () => {
+    const req = {
+      query: {}, // no query parameters
+    } as any;
+    const res = mockResponse();
+
+    await service.getSwitchDetailForTypeAhead(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+    expect(res.json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.OK,
+      data: [],
+    });
+  });
+});
