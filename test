@@ -1,83 +1,28 @@
-
-  it("should handle remedy_switch correctly", async () => {
-    const req = {
-      query: {
-        remedy_switch: "testSwitch",
-      },
-    } as any;
-    const res = mockResponse();
-
-    // Mock the CommonUtil.sanitizeString function
-    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("testSwitch");
-    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
-
-    await service.getSwitchDetailForTypeAhead(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.OK,
-      message: "data fetched successfully!",
-      data: [],
-    });
-    expect(getRWildVal).toHaveBeenCalledWith("testSwitch");
-  });
-
-  it("should handle remedy_callout correctly", async () => {
-    const req = {
-      query: {
-        remedy_callout: "testCallout",
-      },
-    } as any;
-    const res = mockResponse();
-
-    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("testCallout");
-    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
-
-    await service.getSwitchDetailForTypeAhead(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.OK,
-      message: "data fetched successfully!",
-      data: [],
-    });
-    expect(getRWildVal).toHaveBeenCalledWith("testCallout");
-  });
-
-  it("should handle main_switch_name correctly", async () => {
-    const req = {
-      query: {
-        main_switch_name: "mainSwitch",
-      },
-    } as any;
-    const res = mockResponse();
-
-    jest.spyOn(CommonUtil, "sanitizeString").mockReturnValue("mainSwitch");
-    jest.spyOn(service.switchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
-
-    await service.getSwitchDetailForTypeAhead(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.OK,
-      message: "data fetched successfully!",
-      data: [],
-    });
-    expect(getRWildVal).toHaveBeenCalledWith("mainSwitch");
-  });
-
-  it("should return empty data when no filters are provided", async () => {
-    const req = {
-      query: {}, // no query parameters
-    } as any;
-    const res = mockResponse();
-
-    await service.getSwitchDetailForTypeAhead(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.OK,
-      data: [],
-    });
-  });
-});
+Iif(Object.values(queryParams).length===0){
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: "No data found to be update!",
+      });
+    }
+    for(let key in constants.validEditableSwitchDetailsColumns){
+      Iif(!CommonUtil.isEmpty(queryParams[key])){
+        payload[constants.validEditableSwitchDetailsColumns[key]] = CommonUtil.sanitizeString(queryParams[key])
+      }
+    }
+      
+ /*   @ updateTable: (
+      tableName: string,
+      updateValues: { [key: string]: any },
+      keyColumns: string[]
+    )
+*/
+    const data = await this.switchRepo.updateSwitchDetails(payload)
+ 
+    Iif(data.rowsAffected!=1){
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "something went wrong! try again later.",
+      });
+    }
+    switchData = await  this.switchRepo?.getIopdetails(switch_unid);
+    return res.status(HttpStatus.OK).json({
