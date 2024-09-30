@@ -1,76 +1,35 @@
-it("should return BAD_REQUEST when queryParams is empty", async () => {
-    const req = {
-      params: { switch_unid: "123" },
-      body: {}, // empty body
-    } as any;
-    const res = mockResponse();
-
-    await service.editSwitchDetails(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.BAD_REQUEST,
-      message: "No data found to be update!",
-    });
-  });
-
-  it("should update the switch details successfully", async () => {
-    const req = {
-      params: { switch_unid: "123" },
-      body: { someKey: "someValue" }, // valid data
-    } as any;
-    const res = mockResponse();
-    
-    // Mocking dependencies
-    jest.spyOn(switchRepoMock, "checkSwitchUnidInTable").mockResolvedValue({}); // mock valid switch data
-    jest.spyOn(switchRepoMock, "updateSwitchDetails").mockResolvedValue({ rowsAffected: 1 });
-    jest.spyOn(switchRepoMock, "getIopdetails").mockResolvedValue({ updatedData: true });
-
-    await service.editSwitchDetails(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.OK,
-      message: "switch details updated!",
-      data: { updatedData: true },
-    });
-  });
-
-  it("should return INTERNAL_SERVER_ERROR when update fails", async () => {
-    const req = {
-      params: { switch_unid: "123" },
-      body: { someKey: "someValue" },
-    } as any;
-    const res = mockResponse();
-
-    // Mocking dependencies
-    jest.spyOn(switchRepoMock, "checkSwitchUnidInTable").mockResolvedValue({});
-    jest.spyOn(switchRepoMock, "updateSwitchDetails").mockResolvedValue({ rowsAffected: 0 }); // simulate failure
-
-    await service.editSwitchDetails(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-    expect(res.json).toHaveBeenCalledWith({
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: "something went wrong! try again later.",
-    });
-  });
-
-  it("should correctly sanitize and update payload for valid queryParams", async () => {
-    const req = {
-      params: { switch_unid: "123" },
-      body: { key1: "value1", key2: "value2" },
-    } as any;
-    const res = mockResponse();
-
-    jest.spyOn(switchRepoMock, "checkSwitchUnidInTable").mockResolvedValue({});
-    jest.spyOn(CommonUtil, "sanitizeString").mockImplementation((val) => `sanitized_${val}`);
-    jest.spyOn(switchRepoMock, "updateSwitchDetails").mockResolvedValue({ rowsAffected: 1 });
-    jest.spyOn(switchRepoMock, "getIopdetails").mockResolvedValue({ updatedData: true });
-
-    await service.editSwitchDetails(req, res);
-
-    expect(CommonUtil.sanitizeString).toHaveBeenCalledWith("value1");
-    expect(CommonUtil.sanitizeString).toHaveBeenCalledWith("value2");
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-  });
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: "switch unid is not valid or exist!",
+        });
+      }
+    const queryParams = req.body;
+    let payload = {SWITCH_UNID:switch_unid}
+    Iif(Object.values(queryParams).length===0){
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: "No data found to be update!",
+      });
+    }
+    for(let key in constants.validEditableSwitchDetailsColumns){
+      Iif(!CommonUtil.isEmpty(queryParams[key])){
+        payload[constants.validEditableSwitchDetailsColumns[key]] = CommonUtil.sanitizeString(queryParams[key])
+      }
+    }
+      
+ /*   @ updateTable: (
+      tableName: string,
+      updateValues: { [key: string]: any },
+      keyColumns: string[]
+    )
+*/
+    const data = await this.switchRepo.updateSwitchDetails(payload)
+ 
+    Iif(data.rowsAffected!=1){
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "something went wrong! try again later.",
+      });
+    }
+    switchData = await  this.switchRepo?.getIopdetails(switch_unid);
+    return res.status(HttpStatus.OK).json({
