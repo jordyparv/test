@@ -1,62 +1,297 @@
-describe('SwitchController - Additional Methods', () => {
-  describe('getSwitchDetailForTypeAhead', () => {
-    it('should call getSwitchDetailForTypeAhead and return the result', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const mockData = { detail: 'switch detail' };
+import { Test, TestingModule } from "@nestjs/testing";
+import SwitchRepository from "./switch.repository";
+import { Oracle } from "../common/database/oracle"; // Adjust import path as needed
+import { queries } from "./switch.literls";
 
-      jest.spyOn(switchService, 'getSwitchDetailForTypeAhead').mockResolvedValueOnce(mockData);
+describe("SwitchRepository", () => {
+  let repository: SwitchRepository;
+  let connection: Oracle;
 
-      await switchController.getSwitchDetailForTypeAhead(req, res);
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SwitchRepository,
+        {
+          provide: Oracle,
+          useValue: {
+            executeQuery: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
 
-      expect(switchService.getSwitchDetailForTypeAhead).toHaveBeenCalledWith(req, res);
-      expect(res.json).toHaveBeenCalledWith(mockData);
+    repository = module.get<SwitchRepository>(SwitchRepository);
+    connection = module.get<Oracle>(Oracle);
+  });
+
+  describe("searchByUsers", () => {
+    it("should return search results when successful", async () => {
+      const searchText = "user";
+      const mockResult = [{ userid: "johndoe", display: "John Doe" }];
+
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: mockResult });
+
+      const result = await repository.searchByUsers(searchText);
+      expect(result).toEqual(mockResult);
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.switchUsersQuery,
+        [`%${searchText}%`]
+      );
     });
 
-    it('should handle errors in getSwitchDetailForTypeAhead', async () => {
-      const req = mockRequest();
-      const res = mockResponse();
-      const error = new Error('Service error');
-
-      jest.spyOn(switchService, 'getSwitchDetailForTypeAhead').mockRejectedValueOnce(error);
-
-      await switchController.getSwitchDetailForTypeAhead(req, res);
-
-      expect(switchService.getSwitchDetailForTypeAhead).toHaveBeenCalledWith(req, res);
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'error while getting switch details typeahead',
-      });
+    it("should handle errors", async () => {
+      const searchText = "user";
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockRejectedValue(new Error("Error"));
+      await expect(repository.searchByUsers(searchText)).rejects.toThrow(
+        "Error"
+      );
     });
   });
 
-  describe('editSwitchDetails', () => {
-    it('should call editSwitchDetails and return success response', async () => {
-      const req = mockRequest({ params: { switch_unid: '123' } });
-      const res = mockResponse();
+  describe("searchByElements", () => {
+    it("should return search results when successful", async () => {
+      const searchText = "element";
+      const mockResult = [
+        {
+          element: "element",
+          element_div: "element_div",
+          element_sub_dept: "element_sub_dept",
+          element_dept: "element_dept",
+        },
+      ];
 
-      jest.spyOn(switchService, 'editSwitchDetails').mockResolvedValueOnce(undefined);
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: mockResult });
 
-      await switchController.editSwitchDetails(req, res);
-
-      expect(switchService.editSwitchDetails).toHaveBeenCalledWith(req, res);
-      expect(res.send).toHaveBeenCalledWith({ message: 'Switch updated successfully' }); // Assuming a success message
+      const result = await repository.searchByElements(searchText);
+      expect(result).toEqual(mockResult);
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.switchElementsQuery,
+        [`%${searchText}%`]
+      );
     });
 
-    it('should handle errors in editSwitchDetails', async () => {
-      const req = mockRequest({ params: { switch_unid: '123' } });
-      const res = mockResponse();
-      const error = new Error('Service error');
+    it("should handle errors", async () => {
+      const searchText = "element";
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockRejectedValue(new Error("Error"));
 
-      jest.spyOn(switchService, 'editSwitchDetails').mockRejectedValueOnce(error);
+      await expect(repository.searchByElements(searchText)).rejects.toThrow(
+        "Error"
+      );
+    });
+  });
 
-      await switchController.editSwitchDetails(req, res);
+  describe("getSwitchGlobalDetails", () => {
+    it("should return data successfully", async () => {
+      const mockData = { rows: [{ id: 1, name: "Switch 1" }] };
+      jest.spyOn(connection, "executeQuery").mockResolvedValue(mockData);
 
-      expect(switchService.editSwitchDetails).toHaveBeenCalledWith(req, res);
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        error: 'error while updating switch',
+      const result = await repository.getSwitchGlobalDetails({
+        switch_unid: 1,
       });
+
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.getSwitchDetailsForGlobalSearch,
+        { switch_unid: 1 }
+      );
+      expect(result).toEqual(mockData.rows);
+    });
+
+    it("should handle errors thrown by executeQuery", async () => {
+      const error = new Error("Database Error");
+      jest.spyOn(connection, "executeQuery").mockRejectedValue(error);
+
+      await expect(
+        repository.getSwitchGlobalDetails({ switch_unid: 1 })
+      ).rejects.toThrow("Database Error");
+    });
+  });
+
+  describe("getGlobalSearchFilter2", () => {
+    it("should return data successfully", async () => {
+      const query = "SELECT * FROM filters WHERE area = ? AND market = ?";
+      const filterValues = { area: "area1", market: "market1" };
+      const mockData = { rows: [{ id: 1, name: "Filter 1" }] };
+      jest.spyOn(connection, "executeQuery").mockResolvedValue(mockData);
+
+      const result = await repository.getGlobalSearchFilter2(
+        query,
+        filterValues
+      );
+
+      expect(connection.executeQuery).toHaveBeenCalledWith(query, filterValues);
+      expect(result).toEqual(mockData.rows);
+    });
+
+    it("should handle errors thrown by executeQuery", async () => {
+      const query = "SELECT * FROM filters WHERE area = ? AND market = ?";
+      const filterValues = { area: "area1", market: "market1" };
+      const error = new Error("Database Error");
+      jest.spyOn(connection, "executeQuery").mockRejectedValue(error);
+
+      await expect(
+        repository.getGlobalSearchFilter2(query, filterValues)
+      ).rejects.toThrow("Database Error");
+    });
+  });
+
+  describe("searchByLocations", () => {
+    it("should return results for area only", async () => {
+      const area = "some area";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+      const results = await repository.searchByLocations(area, "", "");
+      expect(connection.executeQuery).toHaveBeenCalledWith(queries.areasQuery, [
+        `%${area}%`,
+      ]);
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return results for area and market", async () => {
+      const area = "some area";
+      const market = "some market";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations(area, market, "");
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.marketsByArea,
+        [area, `%${market}%`]
+      );
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return results for area, market, and submarket", async () => {
+      const area = "some area";
+      const market = "some market";
+      const submarket = "some submarket";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations(
+        area,
+        market,
+        submarket
+      );
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.submarketsByAreaAndMarket,
+        [area, market, `%${submarket}%`]
+      );
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return results for market only", async () => {
+      const market = "some market";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations("", market, "");
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.marketsQuery,
+        [`%${market}%`]
+      );
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return results for area and submarket", async () => {
+      const area = "some area";
+      const submarket = "some submarket";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations(area, "", submarket);
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.submarketsByArea,
+        [area, `%${submarket}%`]
+      );
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return results for submarket only", async () => {
+      const submarket = "some submarket";
+      const expectedResults = [{ id: 1, name: "Result 1" }];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations("", "", submarket);
+      expect(connection.executeQuery).toHaveBeenCalledWith(
+        queries.submarketsQuery,
+        [`%${submarket}%`]
+      );
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should return empty array for no parameters", async () => {
+      const expectedResults = [];
+      jest
+        .spyOn(connection, "executeQuery")
+        .mockResolvedValue({ rows: expectedResults });
+
+      const results = await repository.searchByLocations("", "", "");
+      expect(results).toEqual(expectedResults);
+    });
+
+    it("should handle database errors", async () => {
+      const error = new Error("Database error");
+      jest.spyOn(connection, "executeQuery").mockRejectedValue(error);
+
+      await expect(
+        repository.searchByLocations("some area", "", "")
+      ).rejects.toThrow(error);
     });
   });
 });
+
+-----
+//repository
+  async updateSwitchDetails(switchDetails:{[key:string]:any}){
+    /*updateTable: (
+      tableName: string,
+      updateValues: { [key: string]: any },
+      keyColumns: string[]
+    ) 
+    */
+    try {
+    let tableName = 'OPS_DATA_SWITCH'
+    let whereCondition = ['SWITCH_UNID']
+      const query = queries.updateTable(tableName,switchDetails,whereCondition);
+      const qparams = switchDetails;
+      let data: any = await this.connection.executeQuery(query, qparams);
+  
+      return data;
+    } catch (error) {
+      console.error(error.message)
+      throw error
+    }
+  }
+  async getSwitchDetailForTypeAhead(obj:{key:string,value:any}){
+
+      try {
+        const query = queries.getSwitchDetailForTypeAhead(obj.key)
+        const qParams = {FILTER_VALUE:obj.value}
+        let data: any = await this.connection.executeQuery(query, qParams);
+        return data.rows;
+      } catch (error) {
+        console.error(error.message)
+        throw error
+      }
+
+  }
