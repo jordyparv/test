@@ -75,10 +75,34 @@ validEditableSwitchDetailsColumns: {
 }
 
 
-  SELECT SWITCH_UNID, nss_switch AS nss_switch 
-      FROM ops_data_switch_tmp WHERE nss_switch is not null AND NSS_SWITCH LIKE :NSS_SWITCH  
-      UNION ALL
-      SELECT SWITCH_UNID, NSS_SWITCH2 FROM ops_data_switch_tmp WHERE nss_switch2 is not null AND NSS_SWITCH2 LIKE :NSS_SWITCH
-      UNION ALL
-      SELECT SWITCH_UNID, NSS_SWITCH3 FROM ops_data_switch_tmp WHERE nss_switch3 is not null AND NSS_SWITCH3 LIKE :NSS_SWITCH
+SELECT DISTINCT remedy_switch 
+FROM (
+    SELECT remedy_switch 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch IS NOT NULL AND remedy_switch LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch2 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch2 IS NOT NULL AND remedy_switch2 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch3 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch3 IS NOT NULL AND remedy_switch3 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch4 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch4 IS NOT NULL AND remedy_switch4 LIKE :REMEDY_SWITCH
+    
+    UNION ALL
+    
+    SELECT remedy_switch5 
+    FROM OPS_DATA_SWITCH 
+    WHERE remedy_switch5 IS NOT NULL AND remedy_switch5 LIKE :REMEDY_SWITCH
+) AS combined_remedy_switches;
 
