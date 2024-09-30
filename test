@@ -1,53 +1,1186 @@
- describe("updateSwitchDetails", () => {
-    it("should update switch details successfully", async () => {
-      const switchDetails = { SWITCH_UNID: 1, name: "Updated Switch" };
-      const mockResult = { affectedRows: 1 };
+// service
+  async editSwitchDetails(req: any, res: any) {
+    try {
+      const {switch_unid} = req.params;
+      if(!switch_unid){
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: "please provide the switch unid!",
+        });
+      }
+      let switchData = await this.switchRepo.checkSwitchUnidInTable(switch_unid)
+  
+      if(CommonUtil.isEmpty(switchData)){
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: "switch unid is not valid or exist!",
+        });
+      }
+    const queryParams = req.body;
+    let payload = {SWITCH_UNID:switch_unid}
+    if(Object.values(queryParams).length===0){
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: "No data found to be update!",
+      });
+    }
+    for(let key in constants.validEditableSwitchDetailsColumns){
+      if(!CommonUtil.isEmpty(queryParams[key])){
+        payload[constants.validEditableSwitchDetailsColumns[key]] = CommonUtil.sanitizeString(queryParams[key])
+      }
+    }
+      
+ /*   @ updateTable: (
+      tableName: string,
+      updateValues: { [key: string]: any },
+      keyColumns: string[]
+    )
+*/
+    const data = await this.switchRepo.updateSwitchDetails(payload)
 
+    if(data.rowsAffected!=1){
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "something went wrong! try again later.",
+      });
+    }
+    switchData = await  this.switchRepo?.getIopdetails(switch_unid);
+    return res.status(HttpStatus.OK).json({
+      statusCode: HttpStatus.OK,
+      message: "switch details updated!",
+      data:switchData
+    }); 
+      
+
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "something went wrong! try again later.",
+      });
+    }
+  }
+  async getSwitchDetailForTypeAhead(req:any,res:any){
+    try {
+      if(Object.values(req.query).length==0){
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: "please provide filter",
+        });
+      }
+      let {main_switch_name,remedy_switch,remedy_callout} = req.query;
+      console.log({remedy_switch})
+      let filterObj:any = {}
+      if(!CommonUtil.isEmpty(main_switch_name)){
+        filterObj.key ='main_switch'
+        filterObj.value = getRWildVal(CommonUtil.sanitizeString(main_switch_name))
+      }
+      else if(!CommonUtil.isEmpty(remedy_switch)){
+        filterObj.key = 'remedy_switch'
+        filterObj.value = getRWildVal(CommonUtil.sanitizeString(remedy_switch))
+      }
+      else if(!CommonUtil.isEmpty(remedy_callout)){
+        filterObj.key = 'remedy_callout'
+        filterObj.value = getRWildVal(CommonUtil.sanitizeString(remedy_callout))
+      }
+      else{
+        return res.status(HttpStatus.OK).json({
+          statusCode: HttpStatus.OK,
+          data: []
+        });
+      }
+    
+      const data = await this.switchRepo.getSwitchDetailForTypeAhead(filterObj)
+      if(CommonUtil.isEmpty(data)){
+        return res.status(HttpStatus.OK).json({
+          statusCode: HttpStatus.OK,
+          message:"data fetched successfully!",
+          data:[]
+        });
+      }
+
+      return res.status(HttpStatus.OK).json({
+        statusCode: HttpStatus.OK,
+        message:"data fetched successfully!",
+        data
+      });
+
+
+    } catch (error) {
+      console.log(error.message)
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "something went wrong! try again later.",
+      });
+    }
+  }
+
+
+
+-----
+import { Test, TestingModule } from "@nestjs/testing";
+import { SwitchService } from "./switch.service";
+import { RestClient } from "../common/util/restClient/restClient.service";
+import { cacheHelper } from "../common/cache/cache.helper";
+import SwitchRepository from "./switch.repository";
+import { BadRequestException, Logger, NotFoundException } from "@nestjs/common";
+import { SwitchForm } from "../form/switch.form";
+import { SwitchDetailsModel } from "../model/switchDetails.model";
+import { FormatRes } from "../model/format.response";
+import { CommonUtil } from "../common/util/common.util";
+import { queries } from "./switch.literls";
+jest.mock("../common/util/restClient/restClient.service");
+jest.mock("../common/cache/cache.helper");
+jest.mock("./switch.repository");
+jest.mock("../form/switch.form");
+jest.mock("../model/switchDetails.model");
+jest.mock("../model/format.response");
+jest.mock("../common/util/Gsam.util");
+
+interface FileData {
+  switchUnid: string;
+  refmetaId: string;
+  attachmentName: string;
+  attachmentSize: Number;
+  attachmentType: string;
+  attachment: string; // base64 encoded string
+  createdBy: string;
+  attachmentCategory: string;
+  description: string;
+  //metauniversalId?: string;
+}
+
+describe("SwitchService", () => {
+  let service: SwitchService;
+  let restClient: RestClient;
+  let cacheMock: jest.Mocked<cacheHelper>;
+  let switchRepoMock: jest.Mocked<SwitchRepository>;
+  let commonUtilMock: jest.Mocked<typeof CommonUtil>;
+  let cache: cacheHelper;
+  const mockRequest = (params: object = {}): Request =>
+    ({
+      params,
+    } as unknown as Request);
+  const mockResponse = (): Response => {
+    const res: Partial<Response> = {};
+    // res.status = jest.fn().mockReturnThis();
+    res.json = jest.fn().mockReturnThis();
+    //res.send = jest.fn().mockReturnThis();
+    return res as Response;
+  };
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SwitchService,
+        {
+          provide: RestClient,
+          useValue: {
+            upsert: jest.fn(),
+            post2: jest.fn(),
+          },
+        },
+        {
+          provide: cacheHelper,
+          useValue: {
+            getFromCache: jest.fn(),
+          },
+        },
+        SwitchRepository,
+      ],
+    }).compile();
+    service = module.get<SwitchService>(SwitchService);
+    cacheMock = module.get(cacheHelper) as jest.Mocked<cacheHelper>;
+    restClient = module.get<RestClient>(RestClient);
+    switchRepoMock = module.get(
+      SwitchRepository
+    ) as jest.Mocked<SwitchRepository>;
+    commonUtilMock = CommonUtil as jest.Mocked<typeof CommonUtil>;
+    cache = module.get<cacheHelper>(cacheHelper);
+    jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+    jest
+      .spyOn(CommonUtil, "generateMetaUniversalId")
+      .mockReturnValue("test-meta-id");
+    //jest.spyOn(GsamUtil, 'restrictData').mockImplementation(() => []);
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("getSwitchDetails", () => {
+    it("should return validation errors if form is invalid", async () => {
+      const req = { params: { switchUnid: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue(["error"]);
+      await service.getSwitchDetails(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ errors: ["error"] });
+    });
+    it("should return switch details from DB with no alarms", async () => {
+      const req = { params: { switchUnid: "123" }, query: {} } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (restClient.upsert as jest.Mock).mockResolvedValue({ result: [{}] });
+      jest.spyOn(SwitchDetailsModel, "SwitchDetails").mockResolvedValue({});
+      await service.getSwitchDetails(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalled();
+    });
+    it("should set env_alarm_icon to yellow if envAlarmDueDays is between 0 and 30", async () => {
+      const req = { params: { switchUnid: "123" }, query: {} } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      const envAlarmsNextTest = new Date();
+      envAlarmsNextTest.setDate(envAlarmsNextTest.getDate() + 15); // 15 days from today
+      (restClient.upsert as jest.Mock).mockResolvedValue({
+        result: [
+          {
+            ENV_ALARM_NEXT_TEST: envAlarmsNextTest.toISOString().split("T")[0],
+          },
+        ],
+      });
+      jest.spyOn(SwitchDetailsModel, "SwitchDetails").mockResolvedValue({});
+      await service.getSwitchDetails(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switchdetails: expect.objectContaining({
+            env_alarm_icon: "yes",
+            env_alarm_icon_color: "yellow",
+            env_alarm_tooltip: expect.stringContaining(
+              "Environmental alarms test due in 15 day(s)"
+            ),
+          }),
+        })
+      );
+    });
+    it("should set env_alarm_icon to red if envAlarmDueDays is less than 0", async () => {
+      const req = { params: { switchUnid: "123" }, query: {} } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      const envAlarmsNextTest = new Date();
+      envAlarmsNextTest.setDate(envAlarmsNextTest.getDate() - 10); // 10 days ago
+      (restClient.upsert as jest.Mock).mockResolvedValue({
+        result: [
+          {
+            ENV_ALARM_NEXT_TEST: envAlarmsNextTest.toISOString().split("T")[0],
+          },
+        ],
+      });
+      jest.spyOn(SwitchDetailsModel, "SwitchDetails").mockResolvedValue({});
+      await service.getSwitchDetails(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switchdetails: expect.objectContaining({
+            env_alarm_icon: "yes",
+            env_alarm_icon_color: "red",
+            env_alarm_tooltip: expect.stringContaining(
+              "Environmental alarms test overdue by 10 day(s)"
+            ),
+          }),
+        })
+      );
+    });
+    it("should handle DB errors in getSwitchDetails", async () => {
+      const req = { params: { switchUnid: "123" }, query: {} } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (restClient.upsert as jest.Mock).mockRejectedValue(new Error("DB error"));
+      await service.getSwitchDetails(req, res);
+      expect(res.status).not.toHaveBeenCalledWith(200);
+    });
+    it("should handle the case where no data is returned from the DB", async () => {
+      const req = { params: { switchUnid: "123" }, query: {} } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (restClient.upsert as jest.Mock).mockResolvedValue({ result: [] });
+      await service.getSwitchDetails(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+    it("should handle GSAM restricted data scenario", async () => {
+      const req = {
+        params: { switchUnid: "123" },
+        query: { isGsamOffshore: "true" },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      const mockSwitchDetails = {
+        ENV_ALARM_NEXT_TEST: "2024-09-20 12:00:00",
+        otherDetail: "example",
+      };
+
+      const details = {
+        ...mockSwitchDetails,
+        env_alarm_next_test: "2024-09-20",
+        env_alarm_icon: "yes",
+        env_alarm_icon_color: "yellow",
+        env_alarm_tooltip:
+          "Environmental alarms test due in X day(s)\r\n Next verification date : 2024-09-20",
+      };
+
+      const restrictedData = [];
+      // jest.spyOn(GsamUtil, 'restrictData').mockReturnValue(restrictedData[]);
+
+      (restClient.upsert as jest.Mock).mockResolvedValue({
+        result: [mockSwitchDetails],
+      });
+      (SwitchDetailsModel.SwitchDetails as jest.Mock).mockResolvedValue(
+        details
+      );
+
+      await service.getSwitchDetails(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      // expect(res.json).toHaveBeenCalledWith({ switchdetails: {}, error: 'GSAM Restricted Switch' });
+      expect(Logger.prototype.log).toHaveBeenCalledWith("info", "calling db");
+    });
+  });
+  describe("getSwitchesByDir", () => {
+    it("should return switches by director from cache", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((_args, callback) => {
+        return callback({
+          data: { records: [{ switches: [{ switch: "data" }] }] },
+        });
+      });
       jest
-        .spyOn(connection, "executeQuery")
-        .mockResolvedValue(mockResult);
+        .spyOn(FormatRes, "formatResponse")
+        .mockResolvedValue([{ formatted: "switch" }]);
+      await service.getSwitchesByDir(mockReq, mockRes);
+    });
+    it("should handle cache miss and fetch from DB", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback(null);
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getSwitchesfromDbByDirId")
+        .mockImplementation((dirId, extInfo, callback) => {
+          return callback({ switches: [{ switch: "data" }] });
+        });
+      await service.getSwitchesByDir(mockReq, mockRes);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switches: expect.any(Array),
+        })
+      );
+    });
+  });
+  describe("getSwitchesByDir", () => {
+    it("should return switches by director from cache", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
 
-      const result = await repository.updateSwitchDetails(switchDetails);
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((_args, callback) => {
+        return callback({
+          data: { records: [{ switches: [{ switch: "data" }] }] },
+        });
+      });
+      jest
+        .spyOn(FormatRes, "formatResponse")
+        .mockResolvedValue([{ formatted: "switch" }]);
 
+      await service.getSwitchesByDir(mockReq, mockRes);
+    });
+
+    it("should handle cache miss and fetch from DB", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback(null);
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getSwitchesfromDbByDirId")
+        .mockImplementation((dirId, extInfo, callback) => {
+          return callback({ switches: [{ switch: "data" }] });
+        });
+
+      await service.getSwitchesByDir(mockReq, mockRes);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switches: expect.any(Array),
+        })
+      );
+    });
+  });
+  describe("getSwitchesByDir", () => {
+    it("should return switches by director from cache", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((_args, callback) => {
+        return callback({
+          data: { records: [{ switches: [{ switch: "data" }] }] },
+        });
+      });
+      jest
+        .spyOn(FormatRes, "formatResponse")
+        .mockResolvedValue([{ formatted: "switch" }]);
+      await service.getSwitchesByDir(mockReq, mockRes);
+    });
+    it("should handle cache miss and fetch from DB", async () => {
+      const mockReq = { params: { dirId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback(null);
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getSwitchesfromDbByDirId")
+        .mockImplementation((dirId, extInfo, callback) => {
+          return callback({ switches: [{ switch: "data" }] });
+        });
+      await service.getSwitchesByDir(mockReq, mockRes);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switches: expect.any(Array),
+        })
+      );
+    });
+  });
+  describe("getSwitchesByDir", () => {
+    it("should return validation errors if form is invalid", async () => {
+      const req = { params: { dirId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue(["error"]);
+      await service.getSwitchesByDir(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ errors: ["error"] });
+    });
+    it("should return switches from cache", async () => {
+      const req = { params: { dirId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback({
+          data: {
+            records: [{ switches: [{}] }],
+          },
+        })
+      );
+      await service.getSwitchesByDir(req, res);
+      expect(res.json).not.toHaveBeenCalled();
+    });
+    it("should return switches from DB on cache miss", async () => {
+      const req = { params: { dirId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback(null)
+      );
+      await service.getSwitchesByDir(req, res);
+      expect(res.json).toHaveBeenCalled();
+    });
+    it("should handle errors in getSwitchesByDir", async () => {
+      const req = { params: { dirId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation(() => {
+        throw new Error("Cache error");
+      });
+      await service.getSwitchesByDir(req, res);
+      expect(res.status).not.toHaveBeenCalledWith(200);
+    });
+  });
+  describe("getSwitchesByMgr", () => {
+    it("should return switches by manager from cache", async () => {
+      const mockReq = { params: { mgrId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback({
+          data: { records: [{ switches: [{ switch_unid: "123" }] }] },
+        });
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getRootCAInfoForSwitches")
+        .mockResolvedValue([]);
+      jest
+        .spyOn(FormatRes, "formatResponse")
+        .mockResolvedValue([{ formatted: "switch" }]);
+      await service.getSwitchesByMgr(mockReq, mockRes);
+    });
+    it("should handle cache miss and fetch from DB", async () => {
+      const mockReq = { params: { mgrId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback(null);
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getSwitchesfromDbByMgrId")
+        .mockImplementation((mgrId, extInfo, callback) => {
+          return callback({ switches: [{ switch: "data" }] });
+        });
+      await service.getSwitchesByMgr(mockReq, mockRes);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switches: expect.any(Array),
+        })
+      );
+    });
+  });
+  describe("getSwitchesByMgr", () => {
+    it("should return validation errors if form is invalid", async () => {
+      const req = { params: { mgrId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue(["error"]);
+      await service.getSwitchesByMgr(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ errors: ["error"] });
+    });
+    it("should return switches from cache", async () => {
+      const req = { params: { mgrId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback({
+          data: {
+            records: [{ switches: [{}] }],
+          },
+        })
+      );
+      await service.getSwitchesByMgr(req, res);
+      expect(res.json).not.toHaveBeenCalled();
+    });
+    it("should return switches from DB on cache miss", async () => {
+      const req = { params: { mgrId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback(null)
+      );
+      await service.getSwitchesByMgr(req, res);
+      expect(res.json).toHaveBeenCalled();
+    });
+    it("should handle errors in getSwitchesByMgr", async () => {
+      const req = { params: { mgrId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation(() => {
+        throw new Error("Cache error");
+      });
+      await service.getSwitchesByMgr(req, res);
+      expect(res.status).not.toHaveBeenCalledWith(200);
+    });
+  });
+  describe("getSwitchesByTech", () => {
+    it("should return switches by tech from cache", async () => {
+      const mockReq = { params: { techId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback({
+          data: { records: [{ switches: [{ switch_unid: "123" }] }] },
+        });
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getRootCAInfoForSwitches")
+        .mockResolvedValue([]);
+      jest
+        .spyOn(FormatRes, "formatResponse")
+        .mockResolvedValue([{ formatted: "switch" }]);
+      await service.getSwitchesByTech(mockReq, mockRes);
+    });
+    it("should handle cache miss and fetch from DB", async () => {
+      const mockReq = { params: { techId: "123" }, query: {} };
+      const mockRes = { json: jest.fn() };
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      cacheMock.getFromCache.mockImplementation((args, callback) => {
+        return callback(null);
+      });
+      jest
+        .spyOn(service["site_helper_obj"], "getSwitchesfromDbByTechId")
+        .mockImplementation((techId, extInfo, callback) => {
+          return callback({ switches: [{ switch: "data" }] });
+        });
+      await service.getSwitchesByTech(mockReq, mockRes);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          switches: expect.any(Array),
+        })
+      );
+    });
+  });
+  describe("getSwitchesByTech", () => {
+    it("should return validation errors if form is invalid", async () => {
+      const req = { params: { techId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue(["error"]);
+      await service.getSwitchesByTech(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ errors: ["error"] });
+    });
+    it("should return switches from cache", async () => {
+      const req = { params: { techId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback({
+          data: {
+            records: [{ switches: [{}] }],
+          },
+        })
+      );
+      await service.getSwitchesByTech(req, res);
+      expect(res.json).not.toHaveBeenCalled();
+    });
+    it("should return switches from DB on cache miss", async () => {
+      const req = { params: { techId: "123" }, query: { extInfo: "1" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation((args, callback) =>
+        callback(null)
+      );
+      await service.getSwitchesByTech(req, res);
+      expect(res.json).toHaveBeenCalled();
+    });
+    it("should handle errors in getSwitchesByTech", async () => {
+      const req = { params: { techId: "123" } } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+      jest.spyOn(SwitchForm.prototype, "validate").mockReturnValue([]);
+      (cache.getFromCache as jest.Mock).mockImplementation(() => {
+        throw new Error("Cache error");
+      });
+      await service.getSwitchesByTech(req, res);
+      expect(res.status).not.toHaveBeenCalledWith(200);
+    });
+  });
+  describe("IopSwitchContact", () => {
+    it("should return IOP switch contact information", async () => {
+      const switchUnid = "123";
+      switchRepoMock.getIopSwitch.mockResolvedValue([{ contact: "info" }]);
+      const result = await service.IopSwitchContact(switchUnid);
+      expect(result).toEqual({ contact: [{ contact: "info" }] });
+      expect(switchRepoMock.getIopSwitch).toHaveBeenCalledWith(switchUnid);
+    });
+    it("should handle errors", async () => {
+      const switchUnid = "123";
+      switchRepoMock.getIopSwitch.mockRejectedValue(new Error("Test error"));
+      await expect(service.IopSwitchContact(switchUnid)).rejects.toThrow(
+        "Test error"
+      );
+    });
+  });
+  describe("IopSwitchDetail", () => {
+    it("should return IOP switch details", async () => {
+      const switchUnid = "123";
+      switchRepoMock.getIopdetails.mockResolvedValue({ details: "info" });
+      const result = await service.IopSwitchDetail(switchUnid);
+      expect(result).toEqual({ switchdetails: { details: "info" } });
+      expect(switchRepoMock.getIopdetails).toHaveBeenCalledWith(switchUnid);
+    });
+    it("should log an error if switchRepo.getIopdetails throws", async () => {
+      const switchUnid = "1234";
+      const mockError = new Error("Test Error");
+      jest.spyOn(switchRepoMock, "getIopdetails").mockRejectedValue(mockError);
+
+      try {
+        await service.IopSwitchDetail(switchUnid);
+      } catch (error) {
+        expect(switchRepoMock.getIopdetails).toHaveBeenCalledWith(switchUnid);
+        expect(Logger.error).toHaveBeenCalledWith(
+          " error in SwitchDetail",
+          mockError
+        );
+        expect(Logger.error).toHaveBeenCalledWith(
+          "error in SwitchDetail",
+          mockError
+        );
+      }
+    });
+  });
+  //fileattachments
+  describe("SwitchFileAttachments", () => {
+    it("should return processed file attachments", async () => {
+      const mockFileData = [
+        {
+          attachment_category: null,
+          ATTACHMENT_NAME: "file1.txt",
+          ATTACHMENT_SIZE: 1024,
+        },
+        {
+          attachment_category: "manual",
+          ATTACHMENT_NAME: "file2.txt",
+          ATTACHMENT_SIZE: 2048,
+        },
+      ];
+
+      switchRepoMock.getFileAttachments.mockResolvedValue(mockFileData);
+
+      const result = await service.SwitchFileAttachments("some-switch-unid");
+
+      console.log(result); // Debug the result to ensure it matches your expectations
+
+      expect(switchRepoMock.getFileAttachments).toHaveBeenCalledWith(
+        "some-switch-unid"
+      );
+      expect(result).toEqual({
+        fileattachments: [
+          {
+            attachment_category: "switch_details",
+            attachment_name: "file1.txt",
+            attachment_size: 1024,
+          },
+          {
+            attachment_category: "manual",
+            attachment_name: "file2.txt",
+            attachment_size: 2048,
+          },
+        ],
+      });
+      expect(Logger.prototype.log).toHaveBeenCalledWith(
+        "FileAttachments",
+        "output"
+      );
+    });
+    it("should log and throw an error when an exception occurs", async () => {
+      const errorMessage = "Database error";
+      switchRepoMock.getFileAttachments.mockRejectedValue(
+        new Error(errorMessage)
+      );
+
+      await expect(
+        service.SwitchFileAttachments("some-switch-unid")
+      ).rejects.toThrowError();
+
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        " error in FileAttachments",
+        new Error(errorMessage)
+      );
+    });
+  });
+
+  //uploadfile
+  describe("insertFiles", () => {
+    const fileData: FileData[] = [
+      {
+        switchUnid: "123",
+        refmetaId: "abc",
+        attachmentName: "file1.txt",
+        attachmentSize: 1000,
+        attachmentType: "text/plain",
+        attachment: "base64-encoded-string",
+        createdBy: "user1",
+        attachmentCategory: "switch_details",
+        description: "Test description",
+      },
+    ];
+
+    it("should call insertFileAttachments with the correct data", async () => {
+      // Mock the repository's insert method to resolve successfully
+      switchRepoMock.insertFileAttachments.mockResolvedValueOnce(undefined);
+
+      // Call the service method
+      await service.insertFiles(fileData);
+
+      // Verify that the repo was called with the correct data
+      expect(switchRepoMock.insertFileAttachments).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            switchUnid: "123",
+            refmetaId: "abc",
+            attachmentName: "file1.txt",
+            attachmentSize: 1000,
+            attachmentType: "text/plain",
+            attachment: "base64-encoded-string",
+            createdBy: "user1",
+            metauniversalId: "test-meta-id",
+          }),
+        ])
+      );
+    });
+  });
+
+  //deleteattachments
+  describe("deleteAttachment", () => {
+    it("should throw BadRequestException if metauniversalId is invalid", async () => {
+      await expect(service.deleteAttachment(null)).rejects.toThrow(
+        BadRequestException
+      );
+      await expect(service.deleteAttachment(123 as any)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        "Invalid metauniversalId provided: null"
+      );
+    });
+
+    it("should throw NotFoundException if attachment is not found", async () => {
+      switchRepoMock.checkAttachment.mockResolvedValue(null); // mock no attachment found
+
+      await expect(service.deleteAttachment("valid-id")).rejects.toThrow(
+        NotFoundException
+      );
+      expect(switchRepoMock.checkAttachment).toHaveBeenCalledWith("valid-id");
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        "Attachment with ID valid-id not found"
+      );
+    });
+  });
+
+  describe("searchByUsers", () => {
+    it("should return search results when successful", async () => {
+      const searchText = "user";
+      const mockResult = [{ userid: 1, display: "John Doe" }];
+
+      jest.spyOn(switchRepoMock, "searchByUsers").mockResolvedValue(mockResult);
+
+      const result = await service.searchByUsers(searchText);
       expect(result).toEqual(mockResult);
-      expect(connection.executeQuery).toHaveBeenCalledWith(
-        queries.updateTable("OPS_DATA_SWITCH", switchDetails, ["SWITCH_UNID"]),
-        switchDetails
-      );
+      expect(switchRepoMock.searchByUsers).toHaveBeenCalledWith(searchText);
     });
 
-    it("should handle errors during update", async () => {
-      const switchDetails = { SWITCH_UNID: 1, name: "Updated Switch" };
-      const error = new Error("Update Error");
-      jest.spyOn(connection, "executeQuery").mockRejectedValue(error);
-
-      await expect(repository.updateSwitchDetails(switchDetails)).rejects.toThrow("Update Error");
+    it("should handle errors", async () => {
+      const searchText = "user";
+      jest
+        .spyOn(switchRepoMock, "searchByUsers")
+        .mockRejectedValue(new Error("Error"));
+      await expect(service.searchByUsers(searchText)).rejects.toThrow("Error");
     });
   });
 
-  describe("getSwitchDetailForTypeAhead", () => {
-    it("should return switch details for type ahead successfully", async () => {
-      const obj = { key: "name", value: "Switch" };
-      const mockResult = { rows: [{ id: 1, name: "Switch 1" }] };
+  describe("searchByElements", () => {
+    it("should return search results when successful", async () => {
+      const searchText = "element";
+      const mockResult = [
+        {
+          element: "element",
+          element_div: "element_div",
+          element_sub_dept: "element_sub_dept",
+          element_dept: "element_dept",
+        },
+      ];
 
       jest
-        .spyOn(connection, "executeQuery")
+        .spyOn(switchRepoMock, "searchByElements")
         .mockResolvedValue(mockResult);
 
-      const result = await repository.getSwitchDetailForTypeAhead(obj);
+      const result = await service.searchByElements(searchText);
+      expect(result).toEqual(mockResult);
+      expect(switchRepoMock.searchByElements).toHaveBeenCalledWith(searchText);
+    });
 
-      expect(result).toEqual(mockResult.rows);
-      expect(connection.executeQuery).toHaveBeenCalledWith(
-        queries.getSwitchDetailForTypeAhead(obj.key),
-        { FILTER_VALUE: obj.value }
+    it("should handle errors", async () => {
+      const searchText = "element";
+      jest
+        .spyOn(switchRepoMock, "searchByElements")
+        .mockRejectedValue(new Error("Error"));
+      await expect(service.searchByElements(searchText)).rejects.toThrow(
+        "Error"
+      );
+    });
+  });
+
+  describe("searchByLocations", () => {
+    it("should return search results when successful", async () => {
+      const area = "area1";
+      const market = "market1";
+      const submarket = "submarket1";
+      const mockResult = [
+        { area: "area", market: "market", submarket: "submarket" },
+      ];
+      jest
+        .spyOn(switchRepoMock, "searchByLocations")
+        .mockResolvedValue(mockResult);
+      const result = await service.searchByLocations(area, market, submarket);
+      expect(result).toEqual(mockResult);
+      expect(switchRepoMock.searchByLocations).toHaveBeenCalledWith(
+        area,
+        market,
+        submarket
       );
     });
 
-    it("should handle errors during retrieval for type ahead", async () => {
-      const obj = { key: "name", value: "Switch" };
-      const error = new Error("Retrieval Error");
-      jest.spyOn(connection, "executeQuery").mockRejectedValue(error);
-
-      await expect(repository.getSwitchDetailForTypeAhead(obj)).rejects.toThrow("Retrieval Error");
+    it("should handle errors", async () => {
+      const area = "area1";
+      const market = "market1";
+      const submarket = "submarket1";
+      jest
+        .spyOn(switchRepoMock, "searchByLocations")
+        .mockRejectedValue(new Error("Error"));
+      await expect(
+        service.searchByLocations(area, market, submarket)
+      ).rejects.toThrow("Error");
     });
   });
+  describe("getGlobalSearchFilter2", () => {
+    const res = mockResponse();
+    it("should handle request with all parameters", async () => {
+      const req = {
+        query: { area: "area1", market: "market1", sub_market: "submarket1" },
+      };
+      const mockResult = [
+        { area: "area", market: "market", submarket: "submarket" },
+      ];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterAreaAndMarketAndSubMarket,
+        { area: "area1", market: "market1", sub_market: "submarket1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with area and market only", async () => {
+      const req = { query: { area: "area1", market: "market1" } };
+      const mockResult = [{ area: "area", market: "market" }];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterAreaAndMarket,
+        { area: "area1", market: "market1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with area only", async () => {
+      const req = { query: { area: "area1" } };
+      const mockResult = [{ area: "area" }];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterArea,
+        { area: "area1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should return empty array if no area, market, or sub_market is provided", async () => {
+      const req = { query: {} };
+      await service.getGlobalSearchFilter2(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith([]);
+    });
+
+    it("should handle errors from repository", async () => {
+      const req = { query: { area: "area1" } };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockRejectedValue(new Error("Database Error"));
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(res.json).toHaveBeenCalledWith("Database Error");
+    });
+  });
+  describe("getSwitchList", () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any;
+    it("should handle request with no filters and return empty list", async () => {
+      const req = { query: {} };
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: { title: "switch list", listcount: 0, listitems: [] },
+      };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue([]);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with valid filters and return paginated list", async () => {
+      const req = { query: { page: "1", name: "switchName" } };
+      const mockData = [
+        { TOTAL_COUNT: 10, TECH_DETAILS: [], id: 1, name: "Switch 1" },
+      ];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switchlist data fetched for table",
+          totallistcount: 10,
+          totalPages: 1,
+          listcount: 1,
+          listitems: mockData,
+        },
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle empty data", async () => {
+      const req = { query: { page: "1", name: "switchName" } };
+      const mockData = [];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switch list",
+          listcount: 0,
+          listitems: [],
+        },
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle export case correctly", async () => {
+      const req = {
+        query: {
+          export: "true",
+          page: "1",
+          name: "switchName",
+          techid: "user",
+          vsm_name: "vsm_name",
+          switch_code: "switch_code",
+          element_div: "element_div",
+          element_dept: "element_dept",
+          element_sub_dept: "element_sub_dept",
+        },
+      };
+      const mockData = [
+        {
+          TOTAL_COUNT: 10,
+          TECH_DETAILS: '[{"lname": "Doe", "fname": "John"}]',
+          id: 1,
+          name: "Switch 1",
+        },
+      ];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switchlist data fetched for export",
+          totallistcount: 10,
+          totalPages: 1,
+          listcount: 1,
+          listitems: mockData,
+        },
+        columns: ["TECH_DETAILS", "id", "name"],
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle unknown filter keys gracefully", async () => {
+      const req = { query: { unknownKey: "value" } };
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: { title: "switch list", listcount: 0, listitems: [] },
+      };
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle errors from repository", async () => {
+      const req = { query: { page: "1" } };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockRejectedValue(new Error("Database Error"));
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        errorcode: 1,
+        errormessage: "Error occurred while getting the switches",
+      });
+    });
+  });
+});
