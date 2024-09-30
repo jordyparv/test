@@ -74,3 +74,14 @@ validEditableSwitchDetailsColumns: {
     "env_alarm_monitor": "Monitored"
 }
 
+
+SELECT id, nss_switch AS nss_switch FROM switches
+UNION ALL
+SELECT id, nss_switch2 FROM switches
+UNION ALL
+SELECT id, nss_switch3 FROM switches
+UNION ALL
+SELECT id, nss_switch4 FROM switches
+UNION ALL
+SELECT id, nss_switch5 FROM switches;
+
