@@ -75,13 +75,10 @@ validEditableSwitchDetailsColumns: {
 }
 
 
-SELECT id, nss_switch AS nss_switch FROM switches
-UNION ALL
-SELECT id, nss_switch2 FROM switches
-UNION ALL
-SELECT id, nss_switch3 FROM switches
-UNION ALL
-SELECT id, nss_switch4 FROM switches
-UNION ALL
-SELECT id, nss_switch5 FROM switches;
+  SELECT SWITCH_UNID, nss_switch AS nss_switch 
+      FROM ops_data_switch_tmp WHERE nss_switch is not null AND NSS_SWITCH LIKE :NSS_SWITCH  
+      UNION ALL
+      SELECT SWITCH_UNID, NSS_SWITCH2 FROM ops_data_switch_tmp WHERE nss_switch2 is not null AND NSS_SWITCH2 LIKE :NSS_SWITCH
+      UNION ALL
+      SELECT SWITCH_UNID, NSS_SWITCH3 FROM ops_data_switch_tmp WHERE nss_switch3 is not null AND NSS_SWITCH3 LIKE :NSS_SWITCH
 
