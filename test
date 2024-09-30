@@ -1,3 +1,32 @@
-function getRWildVal(val: string) {
-  return `${val}%`;
-}
+describe("getRWildVal", () => {
+  it("should append '%' to a basic string", () => {
+    const input = "test";
+    const output = getRWildVal(input);
+    expect(output).toBe("test%");
+  });
+
+  it("should return '%' for an empty string", () => {
+    const input = "";
+    const output = getRWildVal(input);
+    expect(output).toBe("%");
+  });
+
+  it("should preserve spaces and append '%'", () => {
+    const input = "   "; // input with only spaces
+    const output = getRWildVal(input);
+    expect(output).toBe("   %");
+  });
+
+  it("should handle numeric input", () => {
+    const input = "123";
+    const output = getRWildVal(input);
+    expect(output).toBe("123%");
+  });
+
+  it("should handle special characters", () => {
+    const input = "abc@123";
+    const output = getRWildVal(input);
+    expect(output).toBe("abc@123%");
+  });
+});
+
