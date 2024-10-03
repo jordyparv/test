@@ -1,58 +1,133 @@
+describe("getSwitchDetailForTypeAhead", () => {
+    let req;
+    let res;
+    let mockSwitchRepo;
+    let mockLogger;
 
-  async getSwitchDetailForTypeAhead(req: Request, res: Response) {
-    try {
-      if (Object.values(req.query).length == 0) {
-        return res.status(HttpStatus.BAD_REQUEST).json({
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: "Please provide the filters.",
-        });
-      }
-
-      let { main_switch_name, remedy_switch, remedy_callout } = req.query as SwitchDetailForTypeAheadType;
-
-      let filterObj: filterObjType = {};
-
-      if (!CommonUtil.isEmptyString(main_switch_name)) {
-        filterObj.key = "main_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(main_switch_name));
-      } else if (!CommonUtil.isEmptyString(remedy_switch)) {
-        filterObj.key = "remedy_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_switch));
-      } else if (!CommonUtil.isEmptyString(remedy_callout)) {
-        filterObj.key = "remedy_callout";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_callout));
-      } else {
-
-        return res.status(HttpStatus.OK).json({
-          statusCode: HttpStatus.OK,
-          data: [],
-        });
+    beforeEach(() => {
+        mockSwitchRepo = {
+            getSwitchDetailForTypeAhead: jest.fn(),
+        };
         
-      }
+        mockLogger = {
+            error: jest.fn(),
+        };
 
-      const data = await this.switchRepo.getSwitchDetailForTypeAhead(filterObj);
+        req = { query: {} };
+        res = { 
+            status: jest.fn().mockReturnThis(), 
+            json: jest.fn() 
+        };
+    });
 
-      if (CommonUtil.isEmpty(data)) {
-        return res.status(HttpStatus.OK).json({
-          statusCode: HttpStatus.OK,
-          message: "Data fetched successfully!",
-          data: [],
+    it("should return BAD_REQUEST if no filters are provided", async () => {
+        await service.getSwitchDetailForTypeAhead(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: "Please provide the filters.",
         });
-      }
+    });
 
-      return res.status(HttpStatus.OK).json({
-        statusCode: HttpStatus.OK,
-        message: "Data fetched successfully!",
-        data,
-      });
+    it("should return OK with empty data if no relevant query parameters are provided", async () => {
+        req.query = {
+            some_other_param: 'value',
+        };
+        await service.getSwitchDetailForTypeAhead(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            data: [],
+        });
+    });
 
-    } catch (error) {
-      this.logger.error(error.message);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: "Something went wrong! try again later.",
-      });
-    }
-  }
+    it("should fetch data based on main_switch_name filter", async () => {
+        req.query = { main_switch_name: 'Main Switch' };
+        const mockData = [{ id: 1, name: 'Main Switch' }];
 
-create one for above one like privous and use service instead of controller
+        jest.spyOn(mockSwitchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue(mockData);
+
+        await service.getSwitchDetailForTypeAhead(req, res);
+        
+        expect(mockSwitchRepo.getSwitchDetailForTypeAhead).toHaveBeenCalledWith({
+            key: "main_switch",
+            value: expect.stringContaining('Main Switch'),
+        });
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Data fetched successfully!",
+            data: mockData,
+        });
+    });
+
+    it("should fetch data based on remedy_switch filter", async () => {
+        req.query = { remedy_switch: 'Remedy Switch' };
+        const mockData = [{ id: 2, name: 'Remedy Switch' }];
+
+        jest.spyOn(mockSwitchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue(mockData);
+
+        await service.getSwitchDetailForTypeAhead(req, res);
+        
+        expect(mockSwitchRepo.getSwitchDetailForTypeAhead).toHaveBeenCalledWith({
+            key: "remedy_switch",
+            value: expect.stringContaining('Remedy Switch'),
+        });
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Data fetched successfully!",
+            data: mockData,
+        });
+    });
+
+    it("should fetch data based on remedy_callout filter", async () => {
+        req.query = { remedy_callout: 'Callout' };
+        const mockData = [{ id: 3, name: 'Callout' }];
+
+        jest.spyOn(mockSwitchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue(mockData);
+
+        await service.getSwitchDetailForTypeAhead(req, res);
+        
+        expect(mockSwitchRepo.getSwitchDetailForTypeAhead).toHaveBeenCalledWith({
+            key: "remedy_callout",
+            value: expect.stringContaining('Callout'),
+        });
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Data fetched successfully!",
+            data: mockData,
+        });
+    });
+
+    it("should return OK with empty data if no data is found", async () => {
+        req.query = { main_switch_name: 'Nonexistent Switch' };
+        jest.spyOn(mockSwitchRepo, "getSwitchDetailForTypeAhead").mockResolvedValue([]);
+
+        await service.getSwitchDetailForTypeAhead(req, res);
+        
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Data fetched successfully!",
+            data: [],
+        });
+    });
+
+    it("should log errors and return INTERNAL_SERVER_ERROR", async () => {
+        req.query = { main_switch_name: 'Error Switch' };
+        jest.spyOn(mockSwitchRepo, "getSwitchDetailForTypeAhead").mockImplementation(() => {
+            throw new Error("Database error");
+        });
+
+        await service.getSwitchDetailForTypeAhead(req, res);
+        
+        expect(mockLogger.error).toHaveBeenCalledWith("Database error");
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: "Something went wrong! try again later.",
+        });
+    });
+});
