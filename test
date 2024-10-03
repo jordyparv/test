@@ -1,247 +1,37 @@
-describe("searchByLocations", () => {
-    it("should return search results when successful", async () => {
-      const area = "area1";
-      const market = "market1";
-      const submarket = "submarket1";
-      const mockResult = [
-        { area: "area", market: "market", submarket: "submarket" },
-      ];
-      jest
-        .spyOn(switchRepoMock, "searchByLocations")
-        .mockResolvedValue(mockResult);
-      const result = await service.searchByLocations(area, market, submarket);
-      expect(result).toEqual(mockResult);
-      expect(switchRepoMock.searchByLocations).toHaveBeenCalledWith(
-        area,
-        market,
-        submarket
-      );
-    });
-
-    it("should handle errors", async () => {
-      const area = "area1";
-      const market = "market1";
-      const submarket = "submarket1";
-      jest
-        .spyOn(switchRepoMock, "searchByLocations")
-        .mockRejectedValue(new Error("Error"));
-      await expect(
-        service.searchByLocations(area, market, submarket)
-      ).rejects.toThrow("Error");
-    });
-  });
-  describe("getGlobalSearchFilter2", () => {
-    const res = mockResponse();
-    it("should handle request with all parameters", async () => {
-      const req = {
-        query: { area: "area1", market: "market1", sub_market: "submarket1" },
-      };
-      const mockResult = [
-        { area: "area", market: "market", submarket: "submarket" },
-      ];
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockResult);
-
-      await service.getGlobalSearchFilter2(req, res);
-
-      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
-        queries.getGlobalSearchFilterAreaAndMarketAndSubMarket,
-        { area: "area1", market: "market1", sub_market: "submarket1%" }
-      );
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle request with area and market only", async () => {
-      const req = { query: { area: "area1", market: "market1" } };
-      const mockResult = [{ area: "area", market: "market" }];
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockResult);
-
-      await service.getGlobalSearchFilter2(req, res);
-
-      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
-        queries.getGlobalSearchFilterAreaAndMarket,
-        { area: "area1", market: "market1%" }
-      );
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle request with area only", async () => {
-      const req = { query: { area: "area1" } };
-      const mockResult = [{ area: "area" }];
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockResult);
-
-      await service.getGlobalSearchFilter2(req, res);
-
-      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
-        queries.getGlobalSearchFilterArea,
-        { area: "area1%" }
-      );
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should return empty array if no area, market, or sub_market is provided", async () => {
-      const req = { query: {} };
-      await service.getGlobalSearchFilter2(req, res as Response);
-
-      expect(res.json).toHaveBeenCalledWith([]);
-    });
-
-    it("should handle errors from repository", async () => {
-      const req = { query: { area: "area1" } };
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockRejectedValue(new Error("Database Error"));
-
-      await service.getGlobalSearchFilter2(req, res);
-
-      expect(res.json).toHaveBeenCalledWith("Database Error");
-    });
-  });
-  describe("getSwitchList", () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    } as any;
-    it("should handle request with no filters and return empty list", async () => {
-      const req = { query: {} };
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: { title: "switch list", listcount: 0, listitems: [] },
-      };
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue([]);
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle request with valid filters and return paginated list", async () => {
-      const req = { query: { page: "1", name: "switchName" } };
-      const mockData = [
-        { TOTAL_COUNT: 10, TECH_DETAILS: [], id: 1, name: "Switch 1" },
-      ];
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: {
-          title: "switchlist data fetched for table",
-          totallistcount: 10,
-          totalPages: 1,
-          listcount: 1,
-          listitems: mockData,
-        },
-      };
-
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockData);
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle empty data", async () => {
-      const req = { query: { page: "1", name: "switchName" } };
-      const mockData = [];
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: {
-          title: "switch list",
-          listcount: 0,
-          listitems: [],
-        },
-      };
-
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockData);
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle export case correctly", async () => {
-      const req = {
-        query: {
-          export: "true",
-          page: "1",
-          name: "switchName",
-          techid: "user",
-          vsm_name: "vsm_name",
-          switch_code: "switch_code",
-          element_div: "element_div",
-          element_dept: "element_dept",
-          element_sub_dept: "element_sub_dept",
-        },
-      };
-      const mockData = [
-        {
-          TOTAL_COUNT: 10,
-          TECH_DETAILS: '[{"lname": "Doe", "fname": "John"}]',
-          id: 1,
-          name: "Switch 1",
-        },
-      ];
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: {
-          title: "switchlist data fetched for export",
-          totallistcount: 10,
-          totalPages: 1,
-          listcount: 1,
-          listitems: mockData,
-        },
-        columns: ["TECH_DETAILS", "id", "name"],
-      };
-
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockResolvedValue(mockData);
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle unknown filter keys gracefully", async () => {
-      const req = { query: { unknownKey: "value" } };
-      const mockResult = {
-        resultcode: 0,
-        resultmessage: "Records retrieved successfully",
-        data: { title: "switch list", listcount: 0, listitems: [] },
-      };
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle errors from repository", async () => {
-      const req = { query: { page: "1" } };
-      jest
-        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
-        .mockRejectedValue(new Error("Database Error"));
-
-      await service.getSwitchList(req, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
-        errorcode: 1,
-        errormessage: "Error occurred while getting the switches",
-      });
-    });
+{
+    time_zone_details.timezone:'TIMEZONE',
+    //'ST',
+    //'STATE_CODE',
+    nss_switch:'NSS_SWITCH',
+    nss_switch2:'NSS_SWITCH2',
+    nss_switch3:'NSS_SWITCH3',
+    lucent_switch:'LUCENT_SWITCH',
+    lucent_switch2:'LUCENT_SWITCH2',
+    lucent_switch3:'LUCENT_SWITCH3',
+    ca_switch:'CA_SWITCH',
+    ca_switch2:'CA_SWITCH2',
+    ca_switch3:'CA_SWITCH3',
+    fuze_compliance_name:'EMIS_SWITCH',
+    fuze_compliance_name2:'EMIS_SWITCH2',
+    city:'CITY',
+    address:'ADDRESS',
+    zip:'ZIP',
+    county:'COUNTY',
+    longitude:'LONGITUDE_DECIMAL',
+    latitude:'LATITUDE_DECIMAL',
+    // callout_name:"V_ZONE_NAME",
+    vsm_name:"VSM_SWITCH",
+    phone:"PHONE_NUMBER",
+    description:"DESCRIPTION",
+    main_switch_name:'PRIMARY_SWITCH_UNID',
+    remedy_switch:'REMEDY_SWITCH',
+    remedy_switch2:'REMEDY_SWITCH2',
+    remedy_switch3:'REMEDY_SWITCH3',
+    remedy_switch4:'REMEDY_SWITCH4',
+    remedy_switch5:'REMEDY_SWITCH5',
+    remedy_callout_zone_name:'REMEDY_SWITCH_CZ',
+    env_alarms_tested:'ENV_ALARMS_TESTED',
+    env_alarm_next_test:'ENV_ALARM_NEXT_TEST',
+    env_nocc_monitored:'ENV_NOCC_MONITORED',
+    updated_by:'META_LASTUPDATEBY'
+  }
