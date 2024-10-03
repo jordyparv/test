@@ -1,19 +1,67 @@
-test('should set filterObj for remedy_switch', () => {
-    const req = { remedy_switch: 'someValue' };
-    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-    yourFunction(req, res);
+  async editSwitchDetails(req: Request, res: Response) {
+    try {
+      let { switchUnid: switch_unid } = req.params;
+      const queryParams = req.body;
+      switch_unid = CommonUtil.sanitizeString(switch_unid)
 
-    expect(filterObj.key).toBe('remedy_switch');
-    expect(filterObj.value).toBe('expectedValue');
-});
+      if (!switch_unid) {
 
-test('should set filterObj for remedy_callout', () => {
-    const req = { remedy_callout: 'anotherValue' };
-    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: "Please provide the switch unid!",
+        });
+      }
+      let switchData = await this.switchRepo.checkSwitchUnidInTable(
+        switch_unid
+      );
 
-    yourFunction(req, res);
+      if (CommonUtil.isEmpty(switchData)) {
+        return res.status(HttpStatus.NOT_FOUND).json({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: "Switch unid is not exist!",
+        });
+      }
+      if (Object.values(queryParams).length === 0) {
+        return res.status(HttpStatus.NOT_FOUND).json({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: "Payload not found in the request body!",
+        });
+      }
+      
+      let payload = { SWITCH_UNID: switch_unid };
+      
+      for (let key in constants.ValidEditableSwitchDetailsColumns) {
+        if (!CommonUtil.isEmpty(queryParams[key])) {
+          payload[constants.ValidEditableSwitchDetailsColumns[key]] =
+            typeof queryParams[key] == "string"
+              ? CommonUtil.sanitizeString(queryParams[key])
+              : queryParams[key];
+        }
+      }
 
-    expect(filterObj.key).toBe('remedy_callout');
-    expect(filterObj.value).toBe('expectedValue');
-});
+      const data = await this.switchRepo.updateSwitchDetails(payload);
+
+      if (data.rowsAffected != 1) {
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: "Something went wrong; unable to update the data.",
+        });
+      }
+      switchData = await this.switchRepo?.getIopdetails(switch_unid);
+      return res.status(HttpStatus.OK).json({
+        statusCode: HttpStatus.OK,
+        message: "Switch details updated!",
+        data: switchData,
+      });
+    } catch (error) {
+     this.logger.error("While updating switch",error.message)
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "Unable to update the switch details, try again later."
+      });
+    }
+  }
+
+
+creat test cases to cover 100 test coverage and cover all staments
