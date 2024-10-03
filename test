@@ -1,121 +1,17 @@
-const StringUtils = require('./StringUtils'); // Adjust the path as necessary
-
-describe('StringUtils', () => {
-    describe('isEmptyString', () => {
-        test('should return true for an empty string', () => {
-            expect(StringUtils.isEmptyString("")).toBe(true);
+  if (!CommonUtil.isEmptyString(main_switch_name)) {
+        filterObj.key = "main_switch";
+        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(main_switch_name));
+      } else Eif (!CommonUtil.isEmptyString(remedy_switch)) {
+        filterObj.key = "remedy_switch";
+        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_switch));
+      } else if (!CommonUtil.isEmptyString(remedy_callout)) {
+        filterObj.key = "remedy_callout";
+        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_callout));
+      } else {
+ 
+        return res.status(HttpStatus.OK).json({
+          statusCode: HttpStatus.OK,
+          data: [],
         });
-
-        test('should return false for a non-empty string', () => {
-            expect(StringUtils.isEmptyString("non-empty")).toBe(false);
-        });
-
-        test('should return false for a string with spaces', () => {
-            expect(StringUtils.isEmptyString(" ")).toBe(false);
-        });
-
-        test('should return false for null', () => {
-            expect(StringUtils.isEmptyString(null)).toBe(false);
-        });
-
-        test('should return false for undefined', () => {
-            expect(StringUtils.isEmptyString(undefined)).toBe(false);
-        });
-
-        test('should return false for a number', () => {
-            expect(StringUtils.isEmptyString(123)).toBe(false);
-        });
-
-        test('should return false for boolean false', () => {
-            expect(StringUtils.isEmptyString(false)).toBe(false);
-        });
-
-        test('should return false for an object', () => {
-            expect(StringUtils.isEmptyString({})).toBe(false);
-        });
-
-        test('should return false for an array', () => {
-            expect(StringUtils.isEmptyString([])).toBe(false);
-        });
-
-        test('should return true for an empty string with only spaces', () => {
-            expect(StringUtils.isEmptyString("")).toBe(true); // Only if you want to consider this empty
-        });
-    });
-
-    describe('suffixWildChar', () => {
-        test('should add a suffix wildcard to a non-empty string', () => {
-            expect(StringUtils.suffixWildChar("test")).toBe("test%");
-        });
-
-        test('should return a wildcard for an empty string', () => {
-            expect(StringUtils.suffixWildChar("")).toBe("%");
-        });
-
-        test('should add a suffix wildcard to a string with spaces', () => {
-            expect(StringUtils.suffixWildChar(" ")).toBe(" %");
-        });
-
-        test('should handle null gracefully', () => {
-            expect(StringUtils.suffixWildChar(null)).toBe("null%");
-        });
-
-        test('should handle undefined gracefully', () => {
-            expect(StringUtils.suffixWildChar(undefined)).toBe("undefined%");
-        });
-
-        test('should handle numbers', () => {
-            expect(StringUtils.suffixWildChar(123)).toBe("123%");
-        });
-
-        test('should handle boolean false', () => {
-            expect(StringUtils.suffixWildChar(false)).toBe("false%");
-        });
-
-        test('should handle an object', () => {
-            expect(StringUtils.suffixWildChar({})).toBe("[object Object]%");
-        });
-
-        test('should handle an array', () => {
-            expect(StringUtils.suffixWildChar([])).toBe("%");
-        });
-    });
-
-    describe('encloseWildChar', () => {
-        test('should add wildcard characters around a non-empty string', () => {
-            expect(StringUtils.encloseWildChar("test")).toBe("%test%");
-        });
-
-        test('should return wildcards for an empty string', () => {
-            expect(StringUtils.encloseWildChar("")).toBe("%%");
-        });
-
-        test('should add wildcards around a string with spaces', () => {
-            expect(StringUtils.encloseWildChar(" ")).toBe("% %");
-        });
-
-        test('should handle null gracefully', () => {
-            expect(StringUtils.encloseWildChar(null)).toBe("%null%");
-        });
-
-        test('should handle undefined gracefully', () => {
-            expect(StringUtils.encloseWildChar(undefined)).toBe("%undefined%");
-        });
-
-        test('should handle numbers', () => {
-            expect(StringUtils.encloseWildChar(123)).toBe("%123%");
-        });
-
-        test('should handle boolean false', () => {
-            expect(StringUtils.encloseWildChar(false)).toBe("%false%");
-        });
-
-        test('should handle an object', () => {
-            expect(StringUtils.encloseWildChar({})).toBe("%[object Object]%");
-        });
-
-        test('should handle an array', () => {
-            expect(StringUtils.encloseWildChar([])).toBe("%%");
-        });
-    });
-});
+        
+      }
