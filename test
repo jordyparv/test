@@ -1,17 +1,19 @@
-  if (!CommonUtil.isEmptyString(main_switch_name)) {
-        filterObj.key = "main_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(main_switch_name));
-      } else Eif (!CommonUtil.isEmptyString(remedy_switch)) {
-        filterObj.key = "remedy_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_switch));
-      } else if (!CommonUtil.isEmptyString(remedy_callout)) {
-        filterObj.key = "remedy_callout";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_callout));
-      } else {
- 
-        return res.status(HttpStatus.OK).json({
-          statusCode: HttpStatus.OK,
-          data: [],
-        });
-        
-      }
+test('should set filterObj for remedy_switch', () => {
+    const req = { remedy_switch: 'someValue' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    yourFunction(req, res);
+
+    expect(filterObj.key).toBe('remedy_switch');
+    expect(filterObj.value).toBe('expectedValue');
+});
+
+test('should set filterObj for remedy_callout', () => {
+    const req = { remedy_callout: 'anotherValue' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+    yourFunction(req, res);
+
+    expect(filterObj.key).toBe('remedy_callout');
+    expect(filterObj.value).toBe('expectedValue');
+});
