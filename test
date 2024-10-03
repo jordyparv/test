@@ -1,4 +1,12 @@
-2020-12-31 19:00:00
-YYYY-MM-DD HH24:mi:SS
+isEmptyString
 
-01-JAN-21 12.00.00.000000000 AM
+ 
+    static isEmptyString(str:string){
+        return typeof str === 'string' && !str
+    }
+    static suffixWildChar(val: string) {
+        return `${val}%`;
+      }
+      static encloseWildChar(val: string) {
+        return `%${val}%`;
+      }
