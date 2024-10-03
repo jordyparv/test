@@ -1,37 +1,181 @@
-{
-    time_zone_details.timezone:'TIMEZONE',
-    //'ST',
-    //'STATE_CODE',
-    nss_switch:'NSS_SWITCH',
-    nss_switch2:'NSS_SWITCH2',
-    nss_switch3:'NSS_SWITCH3',
-    lucent_switch:'LUCENT_SWITCH',
-    lucent_switch2:'LUCENT_SWITCH2',
-    lucent_switch3:'LUCENT_SWITCH3',
-    ca_switch:'CA_SWITCH',
-    ca_switch2:'CA_SWITCH2',
-    ca_switch3:'CA_SWITCH3',
-    fuze_compliance_name:'EMIS_SWITCH',
-    fuze_compliance_name2:'EMIS_SWITCH2',
-    city:'CITY',
-    address:'ADDRESS',
-    zip:'ZIP',
-    county:'COUNTY',
-    longitude:'LONGITUDE_DECIMAL',
-    latitude:'LATITUDE_DECIMAL',
-    // callout_name:"V_ZONE_NAME",
-    vsm_name:"VSM_SWITCH",
-    phone:"PHONE_NUMBER",
-    description:"DESCRIPTION",
-    main_switch_name:'PRIMARY_SWITCH_UNID',
-    remedy_switch:'REMEDY_SWITCH',
-    remedy_switch2:'REMEDY_SWITCH2',
-    remedy_switch3:'REMEDY_SWITCH3',
-    remedy_switch4:'REMEDY_SWITCH4',
-    remedy_switch5:'REMEDY_SWITCH5',
-    remedy_callout_zone_name:'REMEDY_SWITCH_CZ',
-    env_alarms_tested:'ENV_ALARMS_TESTED',
-    env_alarm_next_test:'ENV_ALARM_NEXT_TEST',
-    env_nocc_monitored:'ENV_NOCC_MONITORED',
-    updated_by:'META_LASTUPDATEBY'
-  }
+describe("editSwitchDetails", () => {
+    let req;
+    let res;
+    let mockSwitchRepo;
+    let mockLogger;
+
+    const payload = {
+        "time_zone_details.timezone": 'TIMEZONE',
+        nss_switch: 'NSS_SWITCH',
+        nss_switch2: 'NSS_SWITCH2',
+        nss_switch3: 'NSS_SWITCH3',
+        lucent_switch: 'LUCENT_SWITCH',
+        lucent_switch2: 'LUCENT_SWITCH2',
+        lucent_switch3: 'LUCENT_SWITCH3',
+        ca_switch: 'CA_SWITCH',
+        ca_switch2: 'CA_SWITCH2',
+        ca_switch3: 'CA_SWITCH3',
+        fuze_compliance_name: 'EMIS_SWITCH',
+        fuze_compliance_name2: 'EMIS_SWITCH2',
+        city: 'CITY',
+        address: 'ADDRESS',
+        zip: 'ZIP',
+        county: 'COUNTY',
+        longitude: 'LONGITUDE_DECIMAL',
+        latitude: 'LATITUDE_DECIMAL',
+        vsm_name: "VSM_SWITCH",
+        phone: "PHONE_NUMBER",
+        description: "DESCRIPTION",
+        main_switch_name: 'PRIMARY_SWITCH_UNID',
+        remedy_switch: 'REMEDY_SWITCH',
+        remedy_switch2: 'REMEDY_SWITCH2',
+        remedy_switch3: 'REMEDY_SWITCH3',
+        remedy_switch4: 'REMEDY_SWITCH4',
+        remedy_switch5: 'REMEDY_SWITCH5',
+        remedy_callout_zone_name: 'REMEDY_SWITCH_CZ',
+        env_alarms_tested: 'ENV_ALARMS_TESTED',
+        env_alarm_next_test: 'ENV_ALARM_NEXT_TEST',
+        env_nocc_monitored: 'ENV_NOCC_MONITORED',
+        updated_by: 'META_LASTUPDATEBY'
+    };
+
+    beforeEach(() => {
+        mockSwitchRepo = {
+            checkSwitchUnidInTable: jest.fn(),
+            updateSwitchDetails: jest.fn(),
+            getIopdetails: jest.fn(),
+        };
+        
+        mockLogger = {
+            error: jest.fn(),
+        };
+
+        req = { params: {}, body: {} };
+        res = { 
+            status: jest.fn().mockReturnThis(), 
+            json: jest.fn() 
+        };
+    });
+
+    it("should update switch details successfully with payload", async () => {
+        req.params.switchUnid = 'validUnid';
+        req.body = {
+            time_zone_details: { timezone: 'UTC' },
+            nss_switch: 'NSS1',
+            city: 'Sample City',
+        };
+
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(true);
+        mockSwitchRepo.updateSwitchDetails.mockResolvedValue({ rowsAffected: 1 });
+        mockSwitchRepo.getIopdetails.mockResolvedValue({});
+
+        await controller.editSwitchDetails(req, res);
+
+        expect(mockSwitchRepo.updateSwitchDetails).toHaveBeenCalledWith(expect.objectContaining({
+            [payload["time_zone_details.timezone"]]: 'UTC',
+            [payload.nss_switch]: 'NSS1',
+            [payload.city]: 'Sample City',
+        }));
+
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Switch details updated!",
+            data: {},
+        });
+    });
+
+    it("should handle missing fields in payload gracefully", async () => {
+        req.params.switchUnid = 'validUnid';
+        req.body = {
+            nss_switch: 'NSS1',
+        };
+
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(true);
+        mockSwitchRepo.updateSwitchDetails.mockResolvedValue({ rowsAffected: 1 });
+        mockSwitchRepo.getIopdetails.mockResolvedValue({});
+
+        await controller.editSwitchDetails(req, res);
+
+        expect(mockSwitchRepo.updateSwitchDetails).toHaveBeenCalledWith(expect.objectContaining({
+            [payload.nss_switch]: 'NSS1',
+        }));
+
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.OK,
+            message: "Switch details updated!",
+            data: {},
+        });
+    });
+
+    it("should return NOT_FOUND if payload is empty", async () => {
+        req.params.switchUnid = 'validUnid';
+        req.body = {};
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(true);
+        await controller.editSwitchDetails(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.NOT_FOUND,
+            message: "Payload not found in the request body!",
+        });
+    });
+
+    it("should return BAD_REQUEST if switch unid is missing", async () => {
+        req.params.switchUnid = '';
+        req.body = {};
+        await controller.editSwitchDetails(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: "Please provide the switch unid!",
+        });
+    });
+
+    it("should return NOT_FOUND if switch unid does not exist", async () => {
+        req.params.switchUnid = 'invalidUnid';
+        req.body = {};
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(null);
+        await controller.editSwitchDetails(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.NOT_FOUND,
+            message: "Switch unid is not exist!",
+        });
+    });
+
+    it("should return INTERNAL_SERVER_ERROR if update fails", async () => {
+        req.params.switchUnid = 'validUnid';
+        req.body = {
+            nss_switch: 'NSS1',
+        };
+
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(true);
+        mockSwitchRepo.updateSwitchDetails.mockResolvedValue({ rowsAffected: 0 });
+        await controller.editSwitchDetails(req, res);
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: "Something went wrong; unable to update the data.",
+        });
+    });
+
+    it("should log errors and return INTERNAL_SERVER_ERROR", async () => {
+        req.params.switchUnid = 'validUnid';
+        req.body = {
+            nss_switch: 'NSS1',
+        };
+
+        mockSwitchRepo.checkSwitchUnidInTable.mockResolvedValue(true);
+        mockSwitchRepo.updateSwitchDetails.mockImplementation(() => {
+            throw new Error("Database error");
+        });
+        await controller.editSwitchDetails(req, res);
+        expect(mockLogger.error).toHaveBeenCalledWith("While updating switch", "Database error");
+        expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+        expect(res.json).toHaveBeenCalledWith({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: "Unable to update the switch details, try again later."
+        });
+    });
+});
