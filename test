@@ -1,67 +1,247 @@
-
-  async editSwitchDetails(req: Request, res: Response) {
-    try {
-      let { switchUnid: switch_unid } = req.params;
-      const queryParams = req.body;
-      switch_unid = CommonUtil.sanitizeString(switch_unid)
-
-      if (!switch_unid) {
-
-        return res.status(HttpStatus.BAD_REQUEST).json({
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: "Please provide the switch unid!",
-        });
-      }
-      let switchData = await this.switchRepo.checkSwitchUnidInTable(
-        switch_unid
+describe("searchByLocations", () => {
+    it("should return search results when successful", async () => {
+      const area = "area1";
+      const market = "market1";
+      const submarket = "submarket1";
+      const mockResult = [
+        { area: "area", market: "market", submarket: "submarket" },
+      ];
+      jest
+        .spyOn(switchRepoMock, "searchByLocations")
+        .mockResolvedValue(mockResult);
+      const result = await service.searchByLocations(area, market, submarket);
+      expect(result).toEqual(mockResult);
+      expect(switchRepoMock.searchByLocations).toHaveBeenCalledWith(
+        area,
+        market,
+        submarket
       );
+    });
 
-      if (CommonUtil.isEmpty(switchData)) {
-        return res.status(HttpStatus.NOT_FOUND).json({
-          statusCode: HttpStatus.NOT_FOUND,
-          message: "Switch unid is not exist!",
-        });
-      }
-      if (Object.values(queryParams).length === 0) {
-        return res.status(HttpStatus.NOT_FOUND).json({
-          statusCode: HttpStatus.NOT_FOUND,
-          message: "Payload not found in the request body!",
-        });
-      }
-      
-      let payload = { SWITCH_UNID: switch_unid };
-      
-      for (let key in constants.ValidEditableSwitchDetailsColumns) {
-        if (!CommonUtil.isEmpty(queryParams[key])) {
-          payload[constants.ValidEditableSwitchDetailsColumns[key]] =
-            typeof queryParams[key] == "string"
-              ? CommonUtil.sanitizeString(queryParams[key])
-              : queryParams[key];
-        }
-      }
+    it("should handle errors", async () => {
+      const area = "area1";
+      const market = "market1";
+      const submarket = "submarket1";
+      jest
+        .spyOn(switchRepoMock, "searchByLocations")
+        .mockRejectedValue(new Error("Error"));
+      await expect(
+        service.searchByLocations(area, market, submarket)
+      ).rejects.toThrow("Error");
+    });
+  });
+  describe("getGlobalSearchFilter2", () => {
+    const res = mockResponse();
+    it("should handle request with all parameters", async () => {
+      const req = {
+        query: { area: "area1", market: "market1", sub_market: "submarket1" },
+      };
+      const mockResult = [
+        { area: "area", market: "market", submarket: "submarket" },
+      ];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
 
-      const data = await this.switchRepo.updateSwitchDetails(payload);
+      await service.getGlobalSearchFilter2(req, res);
 
-      if (data.rowsAffected != 1) {
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: "Something went wrong; unable to update the data.",
-        });
-      }
-      switchData = await this.switchRepo?.getIopdetails(switch_unid);
-      return res.status(HttpStatus.OK).json({
-        statusCode: HttpStatus.OK,
-        message: "Switch details updated!",
-        data: switchData,
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterAreaAndMarketAndSubMarket,
+        { area: "area1", market: "market1", sub_market: "submarket1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with area and market only", async () => {
+      const req = { query: { area: "area1", market: "market1" } };
+      const mockResult = [{ area: "area", market: "market" }];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterAreaAndMarket,
+        { area: "area1", market: "market1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with area only", async () => {
+      const req = { query: { area: "area1" } };
+      const mockResult = [{ area: "area" }];
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockResult);
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(switchRepoMock.getGlobalSearchFilter2).toHaveBeenCalledWith(
+        queries.getGlobalSearchFilterArea,
+        { area: "area1%" }
+      );
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should return empty array if no area, market, or sub_market is provided", async () => {
+      const req = { query: {} };
+      await service.getGlobalSearchFilter2(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith([]);
+    });
+
+    it("should handle errors from repository", async () => {
+      const req = { query: { area: "area1" } };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockRejectedValue(new Error("Database Error"));
+
+      await service.getGlobalSearchFilter2(req, res);
+
+      expect(res.json).toHaveBeenCalledWith("Database Error");
+    });
+  });
+  describe("getSwitchList", () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any;
+    it("should handle request with no filters and return empty list", async () => {
+      const req = { query: {} };
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: { title: "switch list", listcount: 0, listitems: [] },
+      };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue([]);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle request with valid filters and return paginated list", async () => {
+      const req = { query: { page: "1", name: "switchName" } };
+      const mockData = [
+        { TOTAL_COUNT: 10, TECH_DETAILS: [], id: 1, name: "Switch 1" },
+      ];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switchlist data fetched for table",
+          totallistcount: 10,
+          totalPages: 1,
+          listcount: 1,
+          listitems: mockData,
+        },
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle empty data", async () => {
+      const req = { query: { page: "1", name: "switchName" } };
+      const mockData = [];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switch list",
+          listcount: 0,
+          listitems: [],
+        },
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle export case correctly", async () => {
+      const req = {
+        query: {
+          export: "true",
+          page: "1",
+          name: "switchName",
+          techid: "user",
+          vsm_name: "vsm_name",
+          switch_code: "switch_code",
+          element_div: "element_div",
+          element_dept: "element_dept",
+          element_sub_dept: "element_sub_dept",
+        },
+      };
+      const mockData = [
+        {
+          TOTAL_COUNT: 10,
+          TECH_DETAILS: '[{"lname": "Doe", "fname": "John"}]',
+          id: 1,
+          name: "Switch 1",
+        },
+      ];
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: {
+          title: "switchlist data fetched for export",
+          totallistcount: 10,
+          totalPages: 1,
+          listcount: 1,
+          listitems: mockData,
+        },
+        columns: ["TECH_DETAILS", "id", "name"],
+      };
+
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockResolvedValue(mockData);
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle unknown filter keys gracefully", async () => {
+      const req = { query: { unknownKey: "value" } };
+      const mockResult = {
+        resultcode: 0,
+        resultmessage: "Records retrieved successfully",
+        data: { title: "switch list", listcount: 0, listitems: [] },
+      };
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should handle errors from repository", async () => {
+      const req = { query: { page: "1" } };
+      jest
+        .spyOn(switchRepoMock, "getGlobalSearchFilter2")
+        .mockRejectedValue(new Error("Database Error"));
+
+      await service.getSwitchList(req, res as Response);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        errorcode: 1,
+        errormessage: "Error occurred while getting the switches",
       });
-    } catch (error) {
-     this.logger.error("While updating switch",error.message)
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: "Unable to update the switch details, try again later."
-      });
-    }
-  }
-
-
-creat test cases to cover 100 test coverage and cover all staments
+    });
