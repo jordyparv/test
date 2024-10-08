@@ -1,234 +1,204 @@
-async editSwitchDetails(req: Request, res: Response) {
-    try {
-      let { switchUnid: switch_unid } = req.params;
-      const queryParams = req.body;
-      switch_unid = CommonUtil.sanitizeString(switch_unid)
-      let switchData = await this.switchRepo.checkSwitchUnidInTable(
-        CommonUtil.sanitizeString(switch_unid)
-      );
+import { Test, TestingModule } from '@nestjs/testing';
+import { SwitchController } from './switch.controller'; // Adjust the import path
+import { SwitchService } from './switch.service'; // Adjust the import path
+import { HttpStatus } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { ApiResponseObject } from './api-response-object'; // Adjust the import path
 
-      if (CommonUtil.isEmpty(switchData)) {
-        return res.status(HttpStatus.NOT_FOUND).json(ApiResponseObject(
-          HttpStatus.NOT_FOUND,
-          "Switch unid is not exist!",
-        ));
-      }
-      if (Object.values(queryParams).length === 0) {
-        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
-          HttpStatus.BAD_REQUEST,
-          "Payload not found in the request body!",
-        ));
-      }
-      
-      let payload = { SWITCH_UNID: switch_unid };
-      
-      for (let key in constants.ValidEditableSwitchDetailsColumns) {
-        if (!CommonUtil.isEmpty(queryParams[key])) {
-          payload[constants.ValidEditableSwitchDetailsColumns[key]] =
-            typeof queryParams[key] == "string"
-              ? CommonUtil.sanitizeString(queryParams[key])
-              : queryParams[key];
-        }
-        else if(queryParams[key] == ''){
-          payload[constants.ValidEditableSwitchDetailsColumns[key]] = null
-        }
-      }
+describe('SwitchController', () => {
+    let controller: SwitchController;
+    let service: SwitchService;
 
-      const data = await this.switchRepo.updateSwitchDetails(payload);
+    const mockRequest = (params = {}, body = {}, query = {}) => ({
+        params,
+        body,
+        query,
+    } as Request);
 
-      if (data.rowsAffected != 1) {
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: "Something went wrong; unable to update the data.",
+    const mockResponse = () => {
+        const res: Partial<Response> = {};
+        res.status = jest.fn().mockReturnValue(res);
+        res.json = jest.fn().mockReturnValue(res);
+        return res as Response;
+    };
+
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            controllers: [SwitchController],
+            providers: [
+                {
+                    provide: SwitchService,
+                    useValue: {
+                        checkSwitchUnidInTable: jest.fn(),
+                        updateSwitchDetails: jest.fn(),
+                        getIopdetails: jest.fn(),
+                        getSwitchDetailForTypeAhead: jest.fn(),
+                        getSwitchPmControl: jest.fn(),
+                        updateSwitchPmControl: jest.fn(),
+                    },
+                },
+            ],
+        }).compile();
+
+        controller = module.get<SwitchController>(SwitchController);
+        service = module.get<SwitchService>(SwitchService);
+    });
+
+    describe('editSwitchDetails', () => {
+        it('should return 404 if switch unid does not exist', async () => {
+            const req = mockRequest({ switchUnid: 'non-existent' }, { name: 'Test Switch' });
+            const res = mockResponse();
+
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce(null);
+
+            await controller.editSwitchDetails(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.NOT_FOUND, "Switch unid is not exist!"));
         });
-      }
-      switchData = await this.switchRepo?.getIopdetails(switch_unid);
-      return res.status(HttpStatus.OK).json({
-        statusCode: HttpStatus.OK,
-        message: "Switch details updated!",
-        data: switchData,
-      });
-    } catch (error) {
-     this.logger.error("While updating switch",error.message)
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: "Unable to update the switch details, try again later."
-      });
-    }
-  }
-  async getSwitchDetailForTypeAhead(req: Request, res: Response) {
-    try {
-      if (Object.values(req.query).length == 0) {
-        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
-          HttpStatus.BAD_REQUEST,
-          "Please provide the filters.",
-        ));
-      }
 
+        it('should return 400 if no payload in the request body', async () => {
+            const req = mockRequest({ switchUnid: '123' }, {}, {});
+            const res = mockResponse();
 
-      let { main_switch_name, remedy_switch, remedy_callout,vendor_name,vendor_category } = 
-      req.query as SwitchDetailForTypeAheadType;
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce({});
 
-      let filterObj: filterObjType = {};
+            await controller.editSwitchDetails(req, res);
 
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.BAD_REQUEST, "Payload not found in the request body!"));
+        });
 
-      if (!CommonUtil.isEmptyString(main_switch_name)) {
-        filterObj.key = "main_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(main_switch_name));
-      } else if (!CommonUtil.isEmptyString(remedy_switch)) {
-        filterObj.key = "remedy_switch";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_switch));
-      } else if (!CommonUtil.isEmptyString(remedy_callout)) {
-        filterObj.key = "remedy_callout";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_callout));
-      }else if (!CommonUtil.isEmptyString(vendor_name)) {
-        filterObj.key = "vendor_name";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(vendor_name));
-      }else if (!CommonUtil.isEmptyString(vendor_category)) {
-        filterObj.key = "vendor_category";
-        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(vendor_category));
-      } else {
-        return res.status(HttpStatus.OK).json(ApiResponseObject(
-          HttpStatus.OK,
-          "Data fetched successfully!",
-          []
-        ));
-        
-      }
+        it('should return 200 and updated switch details', async () => {
+            const req = mockRequest({ switchUnid: '123' }, { name: 'Updated Switch' });
+            const res = mockResponse();
 
-      const data = await this.switchRepo.getSwitchDetailForTypeAhead(filterObj);
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce({});
+            jest.spyOn(service, 'updateSwitchDetails').mockResolvedValueOnce({ rowsAffected: 1 });
+            jest.spyOn(service, 'getIopdetails').mockResolvedValueOnce({ name: 'Updated Switch' });
 
-      if (CommonUtil.isEmpty(data)) {
-        return res.status(HttpStatus.OK).json(ApiResponseObject(
-          HttpStatus.OK,
-          "Data fetched successfully!",
-          [],
-        ));
-      }
+            await controller.editSwitchDetails(req, res);
 
-      return res.status(HttpStatus.OK).json(ApiResponseObject(
-        HttpStatus.OK,
-        "Data fetched successfully!",
-        data,
-      ));
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+            expect(res.json).toHaveBeenCalledWith({
+                statusCode: HttpStatus.OK,
+                message: "Switch details updated!",
+                data: { name: 'Updated Switch' },
+            });
+        });
+    });
 
-    } catch (error) {
-      this.logger.error(error.message);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
-      .json(ApiResponseObject(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        "Something went wrong! try again later.",
-      ));
-    }
-  }
-  async getSwitchPmControl(req:Request,res:Response){
-    try {
-      
-      const {switchUnid} = req.params
-      if(CommonUtil.isEmptyString(switchUnid)){
-        return res.status(HttpStatus.BAD_REQUEST)
-        .json(ApiResponseObject(
-          HttpStatus.BAD_REQUEST,
-          "Please provide switch unid!",
-        ));
-      }
+    describe('getSwitchDetailForTypeAhead', () => {
+        it('should return 400 if no filters provided', async () => {
+            const req = mockRequest({}, {}, {});
+            const res = mockResponse();
 
-      let switchData = null
+            await controller.getSwitchDetailForTypeAhead(req, res);
 
-      switchData = await this.switchRepo.checkSwitchUnidInTable(switchUnid)
-      if(CommonUtil.isEmpty(switchData)){
-        return res.status(HttpStatus.NOT_FOUND)
-        .json(ApiResponseObject(
-          HttpStatus.NOT_FOUND,
-          "Switch unid is not exist!",
-        ));
-      }
-     [switchData] = await this.switchRepo.getSwitchPmControl(switchUnid);
-    
-     let response = {}
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.BAD_REQUEST, "Please provide the filters."));
+        });
 
-     for(let key in switchData){
-      if(switchData[key].toLowerCase() === 'true'){
-        response[key.toLowerCase()] = true
-      }
-      else if(switchData[key].toLowerCase() === 'false'){
-        response[key.toLowerCase()] = false
-      }
-      else{
-        response[key.toLowerCase()] = null
-      }
-     }
-     
-     return res.status(HttpStatus.OK)
-     .json(ApiResponseObject(
-       HttpStatus.OK,
-      'Switch pm control fetched successfully!',
-       response,
-     ));
+        it('should return 200 and data if found', async () => {
+            const req = mockRequest({}, {}, { main_switch_name: 'Main Switch' });
+            const res = mockResponse();
 
-    } catch (error) {
-      this.logger.error(error.message);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
-      .json(ApiResponseObject(
-         HttpStatus.INTERNAL_SERVER_ERROR,
-        "Something went wrong! try again later.",
-      ));
-    }
-  }
-  async updateSwitchPmControl(req:Request,res:Response){
-    try {
-      
-      const {switchUnid} = req.params
-      if(CommonUtil.isEmptyString(switchUnid)){
-        return res.status(HttpStatus.BAD_REQUEST)
-        .json(ApiResponseObject(
-          HttpStatus.BAD_REQUEST,
-           "Please provide switch unid!",
-        ));
-      }
+            const mockData = [{ id: 1, name: 'Main Switch' }];
+            jest.spyOn(service, 'getSwitchDetailForTypeAhead').mockResolvedValueOnce(mockData);
 
-      let switchData = null
+            await controller.getSwitchDetailForTypeAhead(req, res);
 
-      switchData = await this.switchRepo.checkSwitchUnidInTable(switchUnid)
-      if(CommonUtil.isEmpty(switchData)){
-        return res.status(HttpStatus.NOT_FOUND)
-        .json(ApiResponseObject(
-         HttpStatus.NOT_FOUND,
-         "Switch unid is not exist!",
-        ));
-      }
-     
-      const queryParams = req.body as SwitchPmControlType
-      if (Object.values(queryParams).length === 0) {
-       
-        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(HttpStatus.BAD_REQUEST,"Payload not found in the request body!"));
-      }
-      let payload = {SWITCH_UNID:switchUnid}
-      for(let key in queryParams){
-        if(constants.ValidColumnsOfSwitchPmControl.includes(key)){
-          payload[key] = queryParams[key] == true ? 'TRUE':'FALSE'
-        }
-      }
-    
-     const data  = await this.switchRepo.updateSwitchPmControl(payload);
-    
-      if(data.rowsAffected!=1){
-        return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ApiResponseObject(
-           HttpStatus.INTERNAL_SERVER_ERROR,
-          'Error occurred while updating switch pm control',
-        ));
-      }
-     return res.status(HttpStatus.OK)
-     .json(
-      ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR,'Switch pm control update successfully!', payload)
-    );
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.OK, "Data fetched successfully!", mockData));
+        });
+    });
 
-    } catch (error) {
-      this.logger.error(error.message);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
-      .json(
-        ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR,"Something went wrong! try again later.")
-      );
-    }
-  }
+    describe('getSwitchPmControl', () => {
+        it('should return 400 if switch unid is empty', async () => {
+            const req = mockRequest({ switchUnid: '' });
+            const res = mockResponse();
+
+            await controller.getSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.BAD_REQUEST, "Please provide switch unid!"));
+        });
+
+        it('should return 404 if switch unid does not exist', async () => {
+            const req = mockRequest({ switchUnid: 'non-existent' });
+            const res = mockResponse();
+
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce(null);
+
+            await controller.getSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.NOT_FOUND, "Switch unid is not exist!"));
+        });
+
+        it('should return 200 and switch pm control data', async () => {
+            const req = mockRequest({ switchUnid: '123' });
+            const res = mockResponse();
+
+            const mockControlData = { someControl: 'true' };
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce({});
+            jest.spyOn(service, 'getSwitchPmControl').mockResolvedValueOnce([mockControlData]);
+
+            await controller.getSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.OK, 'Switch pm control fetched successfully!', {
+                someControl: true
+            }));
+        });
+    });
+
+    describe('updateSwitchPmControl', () => {
+        it('should return 400 if switch unid is empty', async () => {
+            const req = mockRequest({ switchUnid: '' }, { someControl: true });
+            const res = mockResponse();
+
+            await controller.updateSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.BAD_REQUEST, "Please provide switch unid!"));
+        });
+
+        it('should return 404 if switch unid does not exist', async () => {
+            const req = mockRequest({ switchUnid: 'non-existent' }, { someControl: true });
+            const res = mockResponse();
+
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce(null);
+
+            await controller.updateSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.NOT_FOUND, "Switch unid is not exist!"));
+        });
+
+        it('should return 400 if payload is empty', async () => {
+            const req = mockRequest({ switchUnid: '123' }, {});
+            const res = mockResponse();
+
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce({});
+
+            await controller.updateSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.BAD_REQUEST, "Payload not found in the request body!"));
+        });
+
+        it('should return 200 if switch pm control is updated successfully', async () => {
+            const req = mockRequest({ switchUnid: '123' }, { someControl: true });
+            const res = mockResponse();
+
+            jest.spyOn(service, 'checkSwitchUnidInTable').mockResolvedValueOnce({});
+            jest.spyOn(service, 'updateSwitchPmControl').mockResolvedValueOnce({ rowsAffected: 1 });
+
+            await controller.updateSwitchPmControl(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+            expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR, 'Switch pm control update successfully!', expect.any(Object)));
+        });
+    });
+});
