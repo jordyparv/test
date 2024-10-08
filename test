@@ -1,9 +1,75 @@
-  static sanitizeString = (str: string) => {
-        
-        str = str.replace(/[^a-zA-Z0-9 \.,_\-()&\/:;#@!+*?~%^=|'"`<>]/gim, "");
-        return str.trim();
-    };
+async editSwitchDetails(req: Request, res: Response) {
+    try {
+      let { switchUnid: switch_unid } = req.params;
+      const queryParams = req.body;
+      switch_unid = CommonUtil.sanitizeString(switch_unid)
+      let switchData = await this.switchRepo.checkSwitchUnidInTable(
+        CommonUtil.sanitizeString(switch_unid)
+      );
 
+      if (CommonUtil.isEmpty(switchData)) {
+        return res.status(HttpStatus.NOT_FOUND).json(ApiResponseObject(
+          HttpStatus.NOT_FOUND,
+          "Switch unid is not exist!",
+        ));
+      }
+      if (Object.values(queryParams).length === 0) {
+        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
+          HttpStatus.BAD_REQUEST,
+          "Payload not found in the request body!",
+        ));
+      }
+      
+      let payload = { SWITCH_UNID: switch_unid };
+      
+      for (let key in constants.ValidEditableSwitchDetailsColumns) {
+        if (!CommonUtil.isEmpty(queryParams[key])) {
+          payload[constants.ValidEditableSwitchDetailsColumns[key]] =
+            typeof queryParams[key] == "string"
+              ? CommonUtil.sanitizeString(queryParams[key])
+              : queryParams[key];
+        }
+        else if(queryParams[key] == ''){
+          payload[constants.ValidEditableSwitchDetailsColumns[key]] = null
+        }
+      }
+
+      const data = await this.switchRepo.updateSwitchDetails(payload);
+
+      if (data.rowsAffected != 1) {
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: "Something went wrong; unable to update the data.",
+        });
+      }
+      switchData = await this.switchRepo?.getIopdetails(switch_unid);
+      return res.status(HttpStatus.OK).json({
+        statusCode: HttpStatus.OK,
+        message: "Switch details updated!",
+        data: switchData,
+      });
+    } catch (error) {
+     this.logger.error("While updating switch",error.message)
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: "Unable to update the switch details, try again later."
+      });
+    }
+  }
+  async getSwitchDetailForTypeAhead(req: Request, res: Response) {
+    try {
+      if (Object.values(req.query).length == 0) {
+        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
+          HttpStatus.BAD_REQUEST,
+          "Please provide the filters.",
+        ));
+      }
+
+
+      let { main_switch_name, remedy_switch, remedy_callout,vendor_name,vendor_category } = 
+      req.query as SwitchDetailForTypeAheadType;
+
+      let filterObj: filterObjType = {};
 
 
       if (!CommonUtil.isEmptyString(main_switch_name)) {
@@ -15,10 +81,154 @@
       } else if (!CommonUtil.isEmptyString(remedy_callout)) {
         filterObj.key = "remedy_callout";
         filterObj.value = encloseWildChar(CommonUtil.sanitizeString(remedy_callout));
+      }else if (!CommonUtil.isEmptyString(vendor_name)) {
+        filterObj.key = "vendor_name";
+        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(vendor_name));
+      }else if (!CommonUtil.isEmptyString(vendor_category)) {
+        filterObj.key = "vendor_category";
+        filterObj.value = encloseWildChar(CommonUtil.sanitizeString(vendor_category));
       } else {
-        return res.status(HttpStatus.OK).json({
-          statusCode: HttpStatus.OK,
-          data: [],
-        });
+        return res.status(HttpStatus.OK).json(ApiResponseObject(
+          HttpStatus.OK,
+          "Data fetched successfully!",
+          []
+        ));
         
       }
+
+      const data = await this.switchRepo.getSwitchDetailForTypeAhead(filterObj);
+
+      if (CommonUtil.isEmpty(data)) {
+        return res.status(HttpStatus.OK).json(ApiResponseObject(
+          HttpStatus.OK,
+          "Data fetched successfully!",
+          [],
+        ));
+      }
+
+      return res.status(HttpStatus.OK).json(ApiResponseObject(
+        HttpStatus.OK,
+        "Data fetched successfully!",
+        data,
+      ));
+
+    } catch (error) {
+      this.logger.error(error.message);
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponseObject(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Something went wrong! try again later.",
+      ));
+    }
+  }
+  async getSwitchPmControl(req:Request,res:Response){
+    try {
+      
+      const {switchUnid} = req.params
+      if(CommonUtil.isEmptyString(switchUnid)){
+        return res.status(HttpStatus.BAD_REQUEST)
+        .json(ApiResponseObject(
+          HttpStatus.BAD_REQUEST,
+          "Please provide switch unid!",
+        ));
+      }
+
+      let switchData = null
+
+      switchData = await this.switchRepo.checkSwitchUnidInTable(switchUnid)
+      if(CommonUtil.isEmpty(switchData)){
+        return res.status(HttpStatus.NOT_FOUND)
+        .json(ApiResponseObject(
+          HttpStatus.NOT_FOUND,
+          "Switch unid is not exist!",
+        ));
+      }
+     [switchData] = await this.switchRepo.getSwitchPmControl(switchUnid);
+    
+     let response = {}
+
+     for(let key in switchData){
+      if(switchData[key].toLowerCase() === 'true'){
+        response[key.toLowerCase()] = true
+      }
+      else if(switchData[key].toLowerCase() === 'false'){
+        response[key.toLowerCase()] = false
+      }
+      else{
+        response[key.toLowerCase()] = null
+      }
+     }
+     
+     return res.status(HttpStatus.OK)
+     .json(ApiResponseObject(
+       HttpStatus.OK,
+      'Switch pm control fetched successfully!',
+       response,
+     ));
+
+    } catch (error) {
+      this.logger.error(error.message);
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponseObject(
+         HttpStatus.INTERNAL_SERVER_ERROR,
+        "Something went wrong! try again later.",
+      ));
+    }
+  }
+  async updateSwitchPmControl(req:Request,res:Response){
+    try {
+      
+      const {switchUnid} = req.params
+      if(CommonUtil.isEmptyString(switchUnid)){
+        return res.status(HttpStatus.BAD_REQUEST)
+        .json(ApiResponseObject(
+          HttpStatus.BAD_REQUEST,
+           "Please provide switch unid!",
+        ));
+      }
+
+      let switchData = null
+
+      switchData = await this.switchRepo.checkSwitchUnidInTable(switchUnid)
+      if(CommonUtil.isEmpty(switchData)){
+        return res.status(HttpStatus.NOT_FOUND)
+        .json(ApiResponseObject(
+         HttpStatus.NOT_FOUND,
+         "Switch unid is not exist!",
+        ));
+      }
+     
+      const queryParams = req.body as SwitchPmControlType
+      if (Object.values(queryParams).length === 0) {
+       
+        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(HttpStatus.BAD_REQUEST,"Payload not found in the request body!"));
+      }
+      let payload = {SWITCH_UNID:switchUnid}
+      for(let key in queryParams){
+        if(constants.ValidColumnsOfSwitchPmControl.includes(key)){
+          payload[key] = queryParams[key] == true ? 'TRUE':'FALSE'
+        }
+      }
+    
+     const data  = await this.switchRepo.updateSwitchPmControl(payload);
+    
+      if(data.rowsAffected!=1){
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .json(ApiResponseObject(
+           HttpStatus.INTERNAL_SERVER_ERROR,
+          'Error occurred while updating switch pm control',
+        ));
+      }
+     return res.status(HttpStatus.OK)
+     .json(
+      ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR,'Switch pm control update successfully!', payload)
+    );
+
+    } catch (error) {
+      this.logger.error(error.message);
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
+      .json(
+        ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR,"Something went wrong! try again later.")
+      );
+    }
+  }
