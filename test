@@ -1,68 +1,131 @@
- async checkSwitchUnidInTable(switch_unid: string) {
-    try {
-      const query = queries.isSwitchUnidInTable;
-      const qparams = [switch_unid];
-      let data: any = await this.connection.executeQuery(query, qparams);
-      return data.rows;
-    } catch (error) {
-      console.error(error.message);
-      return null;
-    }
-  }
 
-  async updateSwitchDetails(switchDetails:{[key:string]:any}){
+describe('SwitchRepository', () => {
+    let repository: SwitchRepository;
+    let connection: Connection;
 
-    try {
-    let tableName = 'OPS_DATA_SWITCH_TMP'
-    let whereCondition = ['SWITCH_UNID']
-      const query = queries.updateTable(tableName,switchDetails,whereCondition);
-      const qparams = switchDetails;
-      let data: any = await this.connection.executeQuery(query, qparams);
-  
-      return data;
-    } catch (error) {
-      logger.error(error.message)
-      throw error
-    }
-  }
-  async getSwitchDetailForTypeAhead(obj:filterObjType){
+    const mockConnection = {
+        executeQuery: jest.fn(),
+    };
 
-      try {
-        const query = queries.getSwitchDetailForTypeAhead(obj.key)
-        const qParams = {FILTER_VALUE:obj.value}
-        let data: any = await this.connection.executeQuery(query, qParams);
-        return data.rows;
-      } catch (error) {
-        logger.error(error.message)
-        throw error
-      }
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                SwitchRepository,
+                {
+                    provide: Connection,
+                    useValue: mockConnection,
+                },
+            ],
+        }).compile();
 
-  }
+        repository = module.get<SwitchRepository>(SwitchRepository);
+        connection = module.get<Connection>(Connection);
+    });
 
-  async getSwitchPmControl(switchUnid:string){
-    try {
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
 
-      const query = queries.getSwitchPmControl
-      const qParams = [switchUnid]
-      const data:any = await this.connection.executeQuery(query,qParams)
-      return data.rows;
-    } catch (error) {
-      logger.error(error.message)
-      throw error
-    }
-  }
-  async updateSwitchPmControl(qParams:SwitchPmControlType){
-    try {
+    describe('checkSwitchUnidInTable', () => {
+        it('should return switch data if found', async () => {
+            const switchUnid = 'some-unid';
+            const mockData = { rows: [{ id: 1, name: 'Switch 1' }] };
+            mockConnection.executeQuery.mockResolvedValue(mockData);
 
-      const tableName = 'OPS_DATA_SWITCH'
-      const whereConditionColumn = ['SWITCH_UNID']
-      
-      const query = queries.updateTable(tableName,qParams,whereConditionColumn)
-      
-      const data:any = await this.connection.executeQuery(query,qParams)
-      return data;
-    } catch (error) {
-      logger.error(error.message)
-      throw error
-    }
-  }
+            const result = await repository.checkSwitchUnidInTable(switchUnid);
+
+            expect(result).toEqual(mockData.rows);
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.isSwitchUnidInTable, [switchUnid]);
+        });
+
+        it('should return null if an error occurs', async () => {
+            const switchUnid = 'some-unid';
+            mockConnection.executeQuery.mockRejectedValue(new Error('Database error'));
+
+            const result = await repository.checkSwitchUnidInTable(switchUnid);
+
+            expect(result).toBeNull();
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.isSwitchUnidInTable, [switchUnid]);
+        });
+    });
+
+    describe('updateSwitchDetails', () => {
+        it('should update switch details and return result', async () => {
+            const switchDetails = { SWITCH_UNID: 'some-unid', name: 'Updated Switch' };
+            const mockResponse = { rowsAffected: 1 };
+            mockConnection.executeQuery.mockResolvedValue(mockResponse);
+
+            const result = await repository.updateSwitchDetails(switchDetails);
+
+            expect(result).toEqual(mockResponse);
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.updateTable('OPS_DATA_SWITCH_TMP', switchDetails, ['SWITCH_UNID']), switchDetails);
+        });
+
+        it('should throw an error if the update fails', async () => {
+            const switchDetails = { SWITCH_UNID: 'some-unid', name: 'Updated Switch' };
+            mockConnection.executeQuery.mockRejectedValue(new Error('Update error'));
+
+            await expect(repository.updateSwitchDetails(switchDetails)).rejects.toThrow('Update error');
+        });
+    });
+
+    describe('getSwitchDetailForTypeAhead', () => {
+        it('should return switch details for typeahead', async () => {
+            const filterObj = { key: 'main_switch', value: 'Test' };
+            const mockData = { rows: [{ id: 1, name: 'Switch 1' }] };
+            mockConnection.executeQuery.mockResolvedValue(mockData);
+
+            const result = await repository.getSwitchDetailForTypeAhead(filterObj);
+
+            expect(result).toEqual(mockData.rows);
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.getSwitchDetailForTypeAhead(filterObj.key), { FILTER_VALUE: filterObj.value });
+        });
+
+        it('should throw an error if an error occurs', async () => {
+            const filterObj = { key: 'main_switch', value: 'Test' };
+            mockConnection.executeQuery.mockRejectedValue(new Error('Query error'));
+
+            await expect(repository.getSwitchDetailForTypeAhead(filterObj)).rejects.toThrow('Query error');
+        });
+    });
+
+    describe('getSwitchPmControl', () => {
+        it('should return switch PM control data if found', async () => {
+            const switchUnid = 'some-unid';
+            const mockData = { rows: [{ id: 1, control: 'active' }] };
+            mockConnection.executeQuery.mockResolvedValue(mockData);
+
+            const result = await repository.getSwitchPmControl(switchUnid);
+
+            expect(result).toEqual(mockData.rows);
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.getSwitchPmControl, [switchUnid]);
+        });
+
+        it('should throw an error if an error occurs', async () => {
+            const switchUnid = 'some-unid';
+            mockConnection.executeQuery.mockRejectedValue(new Error('Query error'));
+
+            await expect(repository.getSwitchPmControl(switchUnid)).rejects.toThrow('Query error');
+        });
+    });
+
+    describe('updateSwitchPmControl', () => {
+        it('should update PM control and return result', async () => {
+            const qParams = { SWITCH_UNID: 'some-unid', control: true };
+            const mockResponse = { rowsAffected: 1 };
+            mockConnection.executeQuery.mockResolvedValue(mockResponse);
+
+            const result = await repository.updateSwitchPmControl(qParams);
+
+            expect(result).toEqual(mockResponse);
+            expect(mockConnection.executeQuery).toHaveBeenCalledWith(queries.updateTable('OPS_DATA_SWITCH', qParams, ['SWITCH_UNID']), qParams);
+        });
+
+        it('should throw an error if the update fails', async () => {
+            const qParams = { SWITCH_UNID: 'some-unid', control: true };
+            mockConnection.executeQuery.mockRejectedValue(new Error('Update error'));
+
+            await expect(repository.updateSwitchPmControl(qParams)).rejects.toThrow('Update error');
+        });
+    });
+});
