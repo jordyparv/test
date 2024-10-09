@@ -1,5 +1,68 @@
-No overload matches this call.
-  Overload 1 of 4, '(object: SwitchService, method: FunctionPropertyNames<Required<SwitchService>>): SpyInstance<Promise<any> | ... 6 more ... | Promise<...>, [req: ...] | ... 17 more ... | [req: ...]>', gave the following error.
-    Argument of type '"checkSwitchUnidInTable"' is not assignable to parameter of type 'FunctionPropertyNames<Required<SwitchService>>'.
-  Overload 2 of 4, '(object: SwitchService, method: never): SpyInstance<never, never>', gave the following error.
-    Argument of type 'string' is not assignable to parameter of type 'never'.ts(2769)
+ async checkSwitchUnidInTable(switch_unid: string) {
+    try {
+      const query = queries.isSwitchUnidInTable;
+      const qparams = [switch_unid];
+      let data: any = await this.connection.executeQuery(query, qparams);
+      return data.rows;
+    } catch (error) {
+      console.error(error.message);
+      return null;
+    }
+  }
+
+  async updateSwitchDetails(switchDetails:{[key:string]:any}){
+
+    try {
+    let tableName = 'OPS_DATA_SWITCH_TMP'
+    let whereCondition = ['SWITCH_UNID']
+      const query = queries.updateTable(tableName,switchDetails,whereCondition);
+      const qparams = switchDetails;
+      let data: any = await this.connection.executeQuery(query, qparams);
+  
+      return data;
+    } catch (error) {
+      logger.error(error.message)
+      throw error
+    }
+  }
+  async getSwitchDetailForTypeAhead(obj:filterObjType){
+
+      try {
+        const query = queries.getSwitchDetailForTypeAhead(obj.key)
+        const qParams = {FILTER_VALUE:obj.value}
+        let data: any = await this.connection.executeQuery(query, qParams);
+        return data.rows;
+      } catch (error) {
+        logger.error(error.message)
+        throw error
+      }
+
+  }
+
+  async getSwitchPmControl(switchUnid:string){
+    try {
+
+      const query = queries.getSwitchPmControl
+      const qParams = [switchUnid]
+      const data:any = await this.connection.executeQuery(query,qParams)
+      return data.rows;
+    } catch (error) {
+      logger.error(error.message)
+      throw error
+    }
+  }
+  async updateSwitchPmControl(qParams:SwitchPmControlType){
+    try {
+
+      const tableName = 'OPS_DATA_SWITCH'
+      const whereConditionColumn = ['SWITCH_UNID']
+      
+      const query = queries.updateTable(tableName,qParams,whereConditionColumn)
+      
+      const data:any = await this.connection.executeQuery(query,qParams)
+      return data;
+    } catch (error) {
+      logger.error(error.message)
+      throw error
+    }
+  }
