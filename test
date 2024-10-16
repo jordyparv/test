@@ -1,18 +1,5 @@
-MERGE INTO VZW_VENDOR_ASSIGNMENTS tgt
-USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
-ON (src.id = tgt.META_UNIVERSAL_ID)
-WHEN MATCHED THEN
-    UPDATE SET
-    SOURCE_TYPE =:SOURCE_TYPE,
-    SOURCE_ID =:SOURCE_ID,
-    VENDOR_ID =:VENDOR_ID,
-    PM_CATEGORY =:PM_CATEGORY,
-    META_CREATED_DATE =:META_CREATED_DATE,
-    META_CREATED_BY =:META_CREATED_BY,
-    META_LAST_UPDATED_DATE =:META_LAST_UPDATED_DATE,
-    META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY
-WHEN NOT MATCHED THEN
-    INSERT (SOURCE_TYPE,
+INSERT INTO VZW_VENDOR_ASSIGNMENTS (
+    SOURCE_TYPE,
     SOURCE_ID,
     VENDOR_ID,
     PM_CATEGORY,
@@ -20,48 +7,15 @@ WHEN NOT MATCHED THEN
     META_CREATED_DATE,
     META_CREATED_BY,
     META_LAST_UPDATED_DATE,
-    META_LAST_UPDATED_BY)
-    VALUES (
-    :SOURCE_TYPE,
-    :SOURCE_ID,
-    :VENDOR_ID,
-    :PM_CATEGORY,
-    :META_UNIVERSAL_ID,
-    TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-    :META_CREATED_BY,
-    TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),,
-    :META_LAST_UPDATED_BY
-    )
-Query to be executed - undefined
-Bind params are - {
-  SOURCE_TYPE: 1,
-  SOURCE_ID: 107504,
-  VENDOR_ID: 2299,
-  PM_CATEGORY: 'ANTENNA-VENDOR',
-  META_UNIVERSAL_ID: '0000ED2467190C99208CD844735E8FEB',
-  META_CREATED_DATE: '2021-02-08 12:37:24',
-  META_CREATED_BY: 'forsta1',
-  META_LAST_UPDATED_DATE: '2021-02-08 12:37:24',
-  META_LAST_UPDATED_BY: 'forsta1'
-}
-Options -  { maxRows: 1000, autoCommit: true, outFormat: 4002 }
-/usr/apps/iop/apps/services/ot-data-populate-job/node_modules/oracledb/lib/util.js:146
-    throw new Error(getErrorMessage(errorCode, messageArg1));
-          ^
-
-Error: NJS-005: invalid value for parameter 1
-
-
-
-table schema
-Name                   Null     Type          
----------------------- -------- ------------- 
-SOURCE_TYPE            NOT NULL NUMBER(3)     
-SOURCE_ID              NOT NULL NUMBER        
-VENDOR_ID              NOT NULL NUMBER        
-PM_CATEGORY            NOT NULL VARCHAR2(255) 
-META_UNIVERSAL_ID      NOT NULL CHAR(32)      
-META_CREATED_DATE      NOT NULL TIMESTAMP(6)  
-META_CREATED_BY        NOT NULL VARCHAR2(225) 
-META_LAST_UPDATED_DATE NOT NULL TIMESTAMP(6)  
-META_LAST_UPDATED_BY   NOT NULL VARCHAR2(225) 
+    META_LAST_UPDATED_BY
+) VALUES (
+    1,  -- Example SOURCE_TYPE (as a number)
+    107504,  -- Example SOURCE_ID (as a number)
+    2299,  -- Example VENDOR_ID (as a number)
+    'ANTENNA-VENDOR',  -- Example PM_CATEGORY (as a string)
+    '0000ED2467190C99208CD844735E8FEB',  -- Example META_UNIVERSAL_ID (as a string)
+    TO_TIMESTAMP('2021-02-08 12:37:24.000000', 'YYYY-MM-DD HH24:MI:SS.FF'),  -- Example META_CREATED_DATE (as a TIMESTAMP)
+    'forsta1',  -- Example META_CREATED_BY (as a string)
+    TO_TIMESTAMP('2021-02-08 12:37:24.000000', 'YYYY-MM-DD HH24:MI:SS.FF'),  -- Example META_LAST_UPDATED_DATE (as a TIMESTAMP)
+    'forsta1'  -- Example META_LAST_UPDATED_BY (as a string)
+);
