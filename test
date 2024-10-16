@@ -1,1 +1,37 @@
-release/24q4r2
+async function insertDataIntoDB(query, data, callback) {
+  if (!query) {
+    console.error("Please provide the query to perform on the database");
+    return
+  }
+  if (!data || data.length === 0) {
+    console.error("Please provide the data to insert into the database");
+    return
+  }
+
+  const errors = [];
+  const sqlQuery = queryFactory.getQuery(query);
+
+  const promises = data.map((_data) => {
+    return new Promise((resolve) => {
+      oraUtil.execute(query, _data, (err, results) => {
+        if (err) {
+          errors.push(err);
+          console.error(err);
+        }
+        resolve();
+      });
+    });
+  });
+
+  Promise.all(promises)
+    .then(() => {
+      if (errors.length !== 0) {
+        console.error("Error while saving the data!", error);
+        callback();
+      } else {
+        console.log("syncVendorAssignmentQuery was successful")
+        callback();
+      }
+    })
+    .catch(callback);
+}
