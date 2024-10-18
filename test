@@ -1,1 +1,4 @@
-https://verizon.webex.com/verizon/j.php?MTID=m9a4b2da32d6f3bfe30874180215b55bc
+const node_fetch_1 = require("node-fetch");
+                     ^
+
+Error [ERR_REQUIRE_ESM]: require() of ES Module 
