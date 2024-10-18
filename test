@@ -1,34 +1,89 @@
-MERGE INTO VZW_VENDOR_ASSIGNMENTS_TMP tgt
-USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
-ON (src.id = tgt.META_UNIVERSAL_ID)
-WHEN MATCHED THEN
-    UPDATE SET
-    SOURCE_TYPE =:SOURCE_TYPE,
-    SOURCE_ID =:SOURCE_ID,
-    VENDOR_ID =:VENDOR_ID,
-    PM_CATEGORY =:PM_CATEGORY,
-    META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-    META_CREATED_BY =:META_CREATED_BY,
-    META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-    META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY
-WHEN NOT MATCHED THEN
-    INSERT (SOURCE_TYPE,
-    SOURCE_ID,
-    VENDOR_ID,
-    PM_CATEGORY,
-    META_UNIVERSAL_ID,
-    META_CREATED_DATE,
-    META_CREATED_BY,
-    META_LAST_UPDATED_DATE,
-    META_LAST_UPDATED_BY)
-    VALUES (
-    :SOURCE_TYPE,
-    :SOURCE_ID,
-    :VENDOR_ID,
-    :PM_CATEGORY,
-    :META_UNIVERSAL_ID,
-    TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-    :META_CREATED_BY,
-    TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-    :META_LAST_UPDATED_BY
-    )
+async function insertAndMergeData(data, callback) {
+  if (!data || data.length === 0) {
+    console.error("No data provided to insert.");
+    return;
+  }
+
+  const errors = [];
+
+  try {
+    // Insert into temporary table
+    const insertPromises = data.map(item => {
+      return new Promise((resolve) => {
+        const insertQuery = `
+          INSERT INTO VZW_VENDOR_ASSIGNMENTS_TMP (
+            SOURCE_TYPE, SOURCE_ID, VENDOR_ID, PM_CATEGORY,
+            META_UNIVERSAL_ID, META_CREATED_DATE, META_CREATED_BY,
+            META_LAST_UPDATED_DATE, META_LAST_UPDATED_BY
+          ) VALUES (
+            :SOURCE_TYPE, :SOURCE_ID, :VENDOR_ID, :PM_CATEGORY,
+            :META_UNIVERSAL_ID, TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+            :META_CREATED_BY, TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+            :META_LAST_UPDATED_BY
+          )
+        `;
+
+        oraUtil.execute(insertQuery, item, (err) => {
+          if (err) {
+            errors.push(err);
+            console.error(`Error inserting into temp table: ${err}`);
+          }
+          resolve(); // Resolve regardless of success or failure
+        });
+      });
+    });
+
+    await Promise.all(insertPromises); // Wait for all inserts to complete
+
+    if (errors.length > 0) {
+      console.error("Some inserts failed:", errors);
+    }
+
+    // Now perform the merge
+    const mergeQuery = `
+      MERGE INTO VZW_VENDOR_ASSIGNMENTS tgt
+      USING (SELECT META_UNIVERSAL_ID FROM VZW_VENDOR_ASSIGNMENTS_TMP) src
+      ON (src.META_UNIVERSAL_ID = tgt.META_UNIVERSAL_ID)
+      WHEN MATCHED THEN
+          UPDATE SET
+              SOURCE_TYPE = src.SOURCE_TYPE,
+              SOURCE_ID = src.SOURCE_ID,
+              VENDOR_ID = src.VENDOR_ID,
+              PM_CATEGORY = src.PM_CATEGORY,
+              META_CREATED_DATE = src.META_CREATED_DATE,
+              META_CREATED_BY = src.META_CREATED_BY,
+              META_LAST_UPDATED_DATE = src.META_LAST_UPDATED_DATE,
+              META_LAST_UPDATED_BY = src.META_LAST_UPDATED_BY
+      WHEN NOT MATCHED THEN
+          INSERT (SOURCE_TYPE, SOURCE_ID, VENDOR_ID, PM_CATEGORY,
+                  META_UNIVERSAL_ID, META_CREATED_DATE, META_CREATED_BY,
+                  META_LAST_UPDATED_DATE, META_LAST_UPDATED_BY)
+          VALUES (
+              src.SOURCE_TYPE, src.SOURCE_ID, src.VENDOR_ID, src.PM_CATEGORY,
+              src.META_UNIVERSAL_ID, src.META_CREATED_DATE, src.META_CREATED_BY,
+              src.META_LAST_UPDATED_DATE, src.META_LAST_UPDATED_BY
+          )
+    `;
+
+    await new Promise((resolve) => {
+      oraUtil.execute(mergeQuery, {}, (err) => {
+        if (err) {
+          errors.push(err);
+          console.error(`Error merging data: ${err}`);
+        }
+        resolve(); // Resolve regardless of success or failure
+      });
+    });
+
+    if (errors.length > 0) {
+      console.error("Some operations encountered errors:", errors);
+    } else {
+      console.log("Data inserted and merged successfully.");
+    }
+
+    callback();
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    callback();
+  }
+}
