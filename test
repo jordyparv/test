@@ -1,47 +1,34 @@
-async function insertDataIntoDB(query, data, callback, batchSize = 100) {
-  if (!query) {
-    console.error("Please provide the query to perform on the database");
-    return;
-  }
-  if (!data || data.length === 0) {
-    console.error("Please provide the data to insert into the database");
-    return;
-  }
-
-  const errors = [];
-  const sqlQuery = queryFactory.getQuery(query);
-
-  // Function to process each batch
-  const processBatch = async (batch) => {
-    return new Promise((resolve) => {
-      oraUtil.execute(query, batch, (err, results) => {
-        if (err) {
-          errors.push(err);
-          console.error(err);
-        }
-        resolve();
-      });
-    });
-  };
-
-  // Split data into batches and process each one
-  const batches = [];
-  for (let i = 0; i < data.length; i += batchSize) {
-    batches.push(data.slice(i, i + batchSize));
-  }
-
-  // Process all batches
-  const promises = batches.map(batch => processBatch(batch));
-
-  Promise.all(promises)
-    .then(() => {
-      if (errors.length !== 0) {
-        console.error("Error while saving the data!", errors);
-        callback();
-      } else {
-        console.log("syncVendorAssignmentQuery was successful");
-        callback();
-      }
-    })
-    .catch(callback);
-}
+MERGE INTO VZW_VENDOR_ASSIGNMENTS_TMP tgt
+USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSAL_ID)
+WHEN MATCHED THEN
+    UPDATE SET
+    SOURCE_TYPE =:SOURCE_TYPE,
+    SOURCE_ID =:SOURCE_ID,
+    VENDOR_ID =:VENDOR_ID,
+    PM_CATEGORY =:PM_CATEGORY,
+    META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+    META_CREATED_BY =:META_CREATED_BY,
+    META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+    META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY
+WHEN NOT MATCHED THEN
+    INSERT (SOURCE_TYPE,
+    SOURCE_ID,
+    VENDOR_ID,
+    PM_CATEGORY,
+    META_UNIVERSAL_ID,
+    META_CREATED_DATE,
+    META_CREATED_BY,
+    META_LAST_UPDATED_DATE,
+    META_LAST_UPDATED_BY)
+    VALUES (
+    :SOURCE_TYPE,
+    :SOURCE_ID,
+    :VENDOR_ID,
+    :PM_CATEGORY,
+    :META_UNIVERSAL_ID,
+    TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+    :META_CREATED_BY,
+    TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+    :META_LAST_UPDATED_BY
+    )
