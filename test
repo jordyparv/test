@@ -1,19 +1,20 @@
-async function insertDataIntoDB(query, data, callback) {
+async function insertDataIntoDB(query, data, callback, batchSize = 100) {
   if (!query) {
     console.error("Please provide the query to perform on the database");
-    return
+    return;
   }
   if (!data || data.length === 0) {
     console.error("Please provide the data to insert into the database");
-    return
+    return;
   }
 
   const errors = [];
   const sqlQuery = queryFactory.getQuery(query);
 
-  const promises = data.map((_data) => {
+  // Function to process each batch
+  const processBatch = async (batch) => {
     return new Promise((resolve) => {
-      oraUtil.execute(query, _data, (err, results) => {
+      oraUtil.execute(query, batch, (err, results) => {
         if (err) {
           errors.push(err);
           console.error(err);
@@ -21,15 +22,24 @@ async function insertDataIntoDB(query, data, callback) {
         resolve();
       });
     });
-  });
+  };
+
+  // Split data into batches and process each one
+  const batches = [];
+  for (let i = 0; i < data.length; i += batchSize) {
+    batches.push(data.slice(i, i + batchSize));
+  }
+
+  // Process all batches
+  const promises = batches.map(batch => processBatch(batch));
 
   Promise.all(promises)
     .then(() => {
       if (errors.length !== 0) {
-        console.error("Error while saving the data!", error);
+        console.error("Error while saving the data!", errors);
         callback();
       } else {
-        console.log("syncVendorAssignmentQuery was successful")
+        console.log("syncVendorAssignmentQuery was successful");
         callback();
       }
     })
