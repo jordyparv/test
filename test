@@ -1,4 +1,6 @@
-const node_fetch_1 = require("node-fetch");
-                     ^
-
-Error [ERR_REQUIRE_ESM]: require() of ES Module 
+{
+    "message": "request to https://nominatim.openstreetmap.org/search.php failed, reason: read ECONNRESET",
+    "type": "system",
+    "errno": "ECONNRESET",
+    "code": "ECONNRESET"
+}
