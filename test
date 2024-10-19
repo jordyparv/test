@@ -1,10 +1,9 @@
 const queryFactory = require("../../dao/QueryFactory");
 const moment = require("moment");
-const oraUtil = require("ora-util"); // Assuming you have ora-util for DB operations
 
 async function getDummyData() {
   const data = require("../../vnd.json");
-  return data.slice(0, 1000);
+  return data.slice(0,10000);
 }
 
 async function getDataFromOpsTracker(query) {
@@ -49,18 +48,36 @@ async function insertDataIntoDB(query, data, batchSize = 10000) {
     console.error("No data provided for insertion into the database");
     return;
   }
-
   const errors = [];
   const totalBatches = Math.ceil(data.length / batchSize);
   
+  try {
+    
+    await oraUtil.execute(queryFactory.getQuery('truncateVendorAssignmentTmp'), {},(err,result)=>{
+      if(err)
+        throw err
+      else
+      console.log("table truncated successfully")
+     });
+   
+
+  } catch (error) {
+    console.error(error.message)
+  }
+
   console.time("syncVendorAssignmentQuery");
 
   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
     const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
 
     try {
-      await oraUtil.batchInsert(query, batch, { useExecuteMany: true });
-      console.log(`Batch ${batchIndex + 1} of ${totalBatches} inserted successfully.`);
+       oraUtil.batchInsert(query, batch, { useExecuteMany: true },(err,result)=>{
+        if(err)
+          throw err
+        else
+        console.log(`Batch ${batchIndex + 1} of ${totalBatches} inserted successfully.`);
+       });
+      
     } catch (err) {
       errors.push(err);
       console.error(`Error while inserting batch ${batchIndex + 1}:`, err);
@@ -84,10 +101,10 @@ async function populateVendorData(cb) {
     const processedData = await parseVendorData(rawData);
     const insertIntoVendorAssignmentTmp = queryFactory.getQuery("insertIntoVendorAssignmentTmp");
     await insertDataIntoDB(insertIntoVendorAssignmentTmp, processedData);
-    if (cb) cb(null, "Data population successful");
+    // if (cb) cb(null, "Data population successful");
   } catch (error) {
     console.error("Error during sync:", error);
-    if (cb) cb(error);
+    // if (cb) cb(error);
   }
 }
 
