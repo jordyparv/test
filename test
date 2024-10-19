@@ -1,13 +1,121 @@
-const _ = require('lodash');
+const queryFactory = require("../../dao/QueryFactory");
+const moment = require("moment");
 
-function toLowerCaseKeys(input) {
-  if (Array.isArray(input)) {
-    return input.map(item => toLowerCaseKeys(item));
-  } else if (input !== null && typeof input === 'object') {
-    return _.mapValues(
-      _.mapKeys(input, (value, key) => key.toLowerCase()),
-      value => toLowerCaseKeys(value)
+async function getDummyData() {
+  let data = require("../../vnd.json");
+  return data.slice(0,1000);
+}
+
+async function getDataFromOpsTracker(query) {
+  if (!query) {
+    throw "sql query not found";
+  }
+  try {
+    const result = await mssqlConn.executeQuery(query);
+
+    return result;
+  } catch (error) {
+    console.error(
+      `error while executing for this  ${query}`,
+      error.message
     );
   }
-  return input;
 }
+async function parseVendorData(rawData) {
+  try {
+    if (rawData.length == 0 || !rawData) {
+      console.error("vendor data not available to parse");
+      return;
+    }
+    let processedData = [];
+    rawData.forEach((item) => {
+      let data = {
+        SOURCE_TYPE: item.SOURCE_TYPE,
+        SOURCE_ID: item.SOURCE_ID,
+        VENDOR_ID: item.VENDOR_ID,
+        PM_CATEGORY: item.PM_CATEGORY,
+        META_UNIVERSAL_ID: item.META_UNIVERSALID,
+        META_CREATED_DATE: moment(item.META_CREATEDDATE)
+          .utc()
+          .format("YYYY-MM-DD HH:mm:ss"),
+        META_CREATED_BY: item.META_CREATEDBY,
+        META_LAST_UPDATED_DATE: moment(item.META_LASTUPDATEDATE)
+          .utc()
+          .format("YYYY-MM-DD HH:mm:ss"),
+        META_LAST_UPDATED_BY: item.META_LASTUPDATEBY,
+      };
+      processedData.push(data);
+    });
+    return processedData;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function populateVendorData(cb) {
+  try {
+    const opsQuery = queryFactory.getQuery("getVendorAssignment");
+    // const rawData = await getDataFromOpsTracker(opsQuery);
+    const rawData = await getDummyData();
+    const processedData = await parseVendorData(rawData);
+    const insertIntoVendorAssignmentTmp = queryFactory.getQuery(
+      "insertIntoVendorAssignmentTmp"
+    );
+    await insertDataIntoDB(insertIntoVendorAssignmentTmp, processedData, cb, 30000);
+  } catch (error) {
+    console.error("error while sync",error);
+  }
+}
+
+async function insertDataIntoDB(query, data, callback, batchSize = 10000) {
+  if (!query) {
+    console.error("Please provide the query to perform on the database");
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    console.error("Please provide the data to insert into the database");
+    return;
+  }
+
+  const errors = [];
+  // truncating tmp table
+  // oraUtil.execute(queryFactory.getQuery('truncateVendorAssignmentTmp'), {}, (err, results) => {
+  //   if (err) {
+  //     errors.push(err);
+  //     console.error(err);
+  //   }
+  // });
+  const batches = [];
+  console.time("syncVendorAssignmentQuery")
+  oraUtil.batchInsert(query, data,{useExecuteMany:true},(err, results) => {
+    if (err) {
+      errors.push(err);
+      console.error(err);
+    }
+    else{
+      console.log("syncVendorAssignmentQuery was successful");
+      console.timeEnd("syncVendorAssignmentQuery")
+    }
+  });
+  // for (let i = 0; i < data.length; i += batchSize) {
+  //         // batches.push(data.slice(i, i + batchSize));
+         
+  //         // batch.forEach(item=>{
+            
+  //         // processBatch(data.slice(i, i + batchSize))
+  // }
+      if (errors.length !== 0) {
+        console.error("Error while saving the data!", errors);
+      } else {
+        
+        // oraUtil.execute(queryFactory.getQuery('syncVendorAssignment'), item, (err, results) => {
+        //   if (err) {
+        //     errors.push(err);
+        //     console.error(err);
+        //   }
+        // });
+      }
+}
+
+module.exports = { populateVendorData };
