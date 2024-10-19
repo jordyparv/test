@@ -3,7 +3,7 @@ const moment = require("moment");
 
 async function getDummyData() {
   const data = require("../../vnd.json");
-  return data.slice(0,10000);
+  return data.slice(0, 10000);
 }
 
 async function getDataFromOpsTracker(query) {
@@ -48,39 +48,42 @@ async function insertDataIntoDB(query, data, batchSize = 10000) {
     console.error("No data provided for insertion into the database");
     return;
   }
+
   const errors = [];
   const totalBatches = Math.ceil(data.length / batchSize);
-  
-  try {
-    
-    await oraUtil.execute(queryFactory.getQuery('truncateVendorAssignmentTmp'), {},(err,result)=>{
-      if(err)
-        throw err
-      else
-      console.log("table truncated successfully")
-     });
-   
 
+  console.log("Starting to truncate the temporary table...");
+  try {
+    await oraUtil.execute(queryFactory.getQuery('truncateVendorAssignmentTmp'), {}, (err, result) => {
+      if (err) throw err;
+      console.log("Temporary table truncated successfully.");
+    });
   } catch (error) {
-    console.error(error.message)
+    console.error("Error during table truncation:", error.message);
   }
 
   console.time("syncVendorAssignmentQuery");
+  console.log(`Inserting data in ${totalBatches} batches...`);
 
   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
     const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+    const startTime = Date.now(); // Start timing
 
     try {
-       oraUtil.batchInsert(query, batch, { useExecuteMany: true },(err,result)=>{
-        if(err)
-          throw err
-        else
-        console.log(`Batch ${batchIndex + 1} of ${totalBatches} inserted successfully.`);
-       });
-      
+      await new Promise((resolve, reject) => {
+        oraUtil.batchInsert(query, batch, { useExecuteMany: true }, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            const endTime = Date.now(); // End timing
+            const duration = ((endTime - startTime) / 1000).toFixed(2); // Duration in seconds
+            console.log(`Batch ${batchIndex + 1} of ${totalBatches} inserted successfully in ${duration} seconds.`);
+            resolve(result);
+          }
+        });
+      });
     } catch (err) {
       errors.push(err);
-      console.error(`Error while inserting batch ${batchIndex + 1}:`, err);
     }
   }
 
@@ -95,16 +98,18 @@ async function insertDataIntoDB(query, data, batchSize = 10000) {
 
 async function populateVendorData(cb) {
   try {
+    console.log("Fetching data for vendor population...");
     const opsQuery = queryFactory.getQuery("getVendorAssignment");
     // const rawData = await getDataFromOpsTracker(opsQuery);
     const rawData = await getDummyData();
     const processedData = await parseVendorData(rawData);
     const insertIntoVendorAssignmentTmp = queryFactory.getQuery("insertIntoVendorAssignmentTmp");
     await insertDataIntoDB(insertIntoVendorAssignmentTmp, processedData);
-    // if (cb) cb(null, "Data population successful");
+    
+    if (cb) cb(null, "Data population successful.");
   } catch (error) {
     console.error("Error during sync:", error);
-    // if (cb) cb(error);
+    if (cb) cb(error);
   }
 }
 
