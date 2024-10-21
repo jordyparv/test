@@ -1,44 +1,19 @@
-SELECT TRIGGER_NAME, TRIGGER_TYPE, TRIGGERING_EVENT, STATUS, DESCRIPTION
-FROM USER_TRIGGERS
-WHERE TRIGGER_NAME = 'SWITCH_DETAILS_AUDIT_LOG';
-
---
-ALTER TRIGGER IOPADMIN.SWITCH_DETAILS_AUDIT_LOG COMPILE;
---
-SHOW ERRORS TRIGGER IOPADMIN.SWITCH_DETAILS_AUDIT_LOG;
-
---
-SELECT OBJECT_NAME, OBJECT_TYPE
-FROM ALL_DEPENDENCIES
-WHERE NAME = 'SWITCH_DETAILS_AUDIT_LOG';
+UPDATE OPS_DATA_SWITCH SET SWITCH_UNID = :SWITCH_UNID, 
+REMEDY_SWITCH = :REMEDY_SWITCH, 
+REMEDY_SWITCH2 = :REMEDY_SWITCH2, 
+REMEDY_SWITCH3 = :REMEDY_SWITCH3, 
+REMEDY_SWITCH4 = :REMEDY_SWITCH4, 
+REMEDY_SWITCH5 = :REMEDY_SWITCH5, 
+REMEDY_SWITCH_CZ = :REMEDY_SWITCH_CZ, 
+META_LASTUPDATEBY = :META_LASTUPDATEBY,
+META_LASTUPDATEDATE = SYSDATE 
+WHERE SWITCH_UNID = :SWITCH_UNID;
 
 
---error
-Errors for TRIGGER IOPADMIN.SWITCH_DETAILS_AUDIT_LOG:
-
-LINE/COL ERROR
--------- ----------------------------------------------------------------------------
-8/1      PLS-00103: Encountered the symbol "END" when expecting one of the following:
-         
-         ( begin case declare exit for goto if loop mod null pragma
-         raise return select update while with <an identifier>
-         <a double-quoted delimited-identifier> <a bind variable> <<
-         continue close current delete fetch lock insert open rollback
-         savepoint set sql execute commit forall merge pipe purge
-         json_exists json_value json_query json_object json_array
-
-
-
-{
-  query: 'UPDATE OPS_DATA_SWITCH SET SWITCH_UNID = :SWITCH_UNID, REMEDY_SWITCH = :REMEDY_SWITCH, REMEDY_SWITCH2 = :REMEDY_SWITCH2, REMEDY_SWITCH3 = :REMEDY_SWITCH3, REMEDY_SWITCH4 = :REMEDY_SWITCH4, REMEDY_SWITCH5 = :REMEDY_SWITCH5, REMEDY_SWITCH_CZ = :REMEDY_SWITCH_CZ, META_LASTUPDATEBY = :META_LASTUPDATEBY, META_LASTUPDATEDATE = SYSDATE WHERE SWITCH_UNID = :SWITCH_UNID',
-  qparams: {
-    SWITCH_UNID: 'FA5D7626DB5070AE903E10A1A6631602',
-    REMEDY_SWITCH: 'BALTIMORE 1',
-    REMEDY_SWITCH2: 'COLUMBIA_ST ANDREWS',
-    REMEDY_SWITCH3: 'GREENVILLE_OMCR',
-    REMEDY_SWITCH4: 'PHOENIX_ADAM_STREET',
-    REMEDY_SWITCH5: 'GREENVILLE_MTX_7',
-    REMEDY_SWITCH_CZ: 'SWITCH_VRAN_SW',
-    META_LASTUPDATEBY: 'biswmr4'
-  }
-}
+SQL Error: ORA-04098: trigger 'IOPADMIN.SWITCH_DETAILS_AUDIT_LOG' is invalid and failed re-validation
+04098. 00000 -  "trigger '%s.%s' is invalid and failed re-validation"
+*Cause:    A trigger was attempted to be retrieved for execution and was
+           found to be invalid.  This also means that compilation/authorization
+           failed for the trigger.
+*Action:   Options are to resolve the compilation/authorization errors,
+           disable the trigger, or drop the trigger.
