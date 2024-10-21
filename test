@@ -1,13 +1,1 @@
-USING (
-    SELECT 
-        META_UNIVERSAL_ID,
-        SOURCE_TYPE,
-        SOURCE_ID,
-        VENDOR_ID,
-        PM_CATEGORY,
-        META_CREATED_DATE,
-        META_CREATED_BY,
-        META_LAST_UPDATED_DATE,
-        META_LAST_UPDATED_BY  -- Ensure this column is included
-    FROM VZW_VENDOR_ASSIGNMENTS_TMP
-) src
+https://verizon.webex.com/verizon/j.php?MTID=mdd222fb717960430572dcfa8d2dc525a
