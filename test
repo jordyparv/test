@@ -1,19 +1,9 @@
-UPDATE OPS_DATA_SWITCH SET SWITCH_UNID = :SWITCH_UNID, 
-REMEDY_SWITCH = :REMEDY_SWITCH, 
-REMEDY_SWITCH2 = :REMEDY_SWITCH2, 
-REMEDY_SWITCH3 = :REMEDY_SWITCH3, 
-REMEDY_SWITCH4 = :REMEDY_SWITCH4, 
-REMEDY_SWITCH5 = :REMEDY_SWITCH5, 
-REMEDY_SWITCH_CZ = :REMEDY_SWITCH_CZ, 
-META_LASTUPDATEBY = :META_LASTUPDATEBY,
-META_LASTUPDATEDATE = SYSDATE 
-WHERE SWITCH_UNID = :SWITCH_UNID;
+"PLS-00103: Encountered the symbol "END" when expecting one of the following:
 
-
-SQL Error: ORA-04098: trigger 'IOPADMIN.SWITCH_DETAILS_AUDIT_LOG' is invalid and failed re-validation
-04098. 00000 -  "trigger '%s.%s' is invalid and failed re-validation"
-*Cause:    A trigger was attempted to be retrieved for execution and was
-           found to be invalid.  This also means that compilation/authorization
-           failed for the trigger.
-*Action:   Options are to resolve the compilation/authorization errors,
-           disable the trigger, or drop the trigger.
+   ( begin case declare exit for goto if loop mod null pragma
+   raise return select update while with <an identifier>
+   <a double-quoted delimited-identifier> <a bind variable> <<
+   continue close current delete fetch lock insert open rollback
+   savepoint set sql execute commit forall merge pipe purge
+   json_exists json_value json_query json_object json_array
+"
