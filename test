@@ -1,2 +1,89 @@
+async setSwitchPmVendorAssignment(vendorAssoc:{[key:string]:any}){
+    try {
+      const query = queries.setSwitchPmVendorAssignment;
+      const qparams = vendorAssoc;
+      let data: any = await this.connection.executeQuery(query, qparams);
+      return data;
+    } catch (error) {
+      console.error(error.message);
+     throw error
+    }
+  }
 
-https://verizon.webex.com/verizon-en/j.php?MTID=mf279640d7994bb5e46eb97a4efdf7006
+
+async setSwitchPmVendorAssignment(req:Request,res:Response){
+    try {
+      let {switchUnid} = req.params
+      let switchData = null
+    
+     switchUnid = CommonUtil.sanitizeString(switchUnid)
+     switchData = await this.switchRepo.checkSwitchUnidInTable(switchUnid)
+     
+     if(CommonUtil.isEmpty(switchData)){
+       return res.status(HttpStatus.NOT_FOUND)
+       .json(ApiResponseObject(
+         HttpStatus.NOT_FOUND,
+         "Switch unid is not exist!",
+       ));
+     }
+     
+     let queryParams = req.body as SwitchPmVendorAssignmentType
+
+   
+     if (Object.keys(queryParams).length == 0) {
+      return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
+        HttpStatus.BAD_REQUEST,
+        "Payload not found in the request body!",
+      ));
+    }
+    let payload = {
+      SOURCE_TYPE:2,
+      META_UNIVERSAL_ID:queryParams.vzw_vendor_assignment_id?
+                        queryParams.vzw_vendor_assignment_id:
+                        CommonUtil.generateMetaUniversalId()
+    };
+
+
+    
+    for (let key in constants.ValidSwitchPMVendorAssignmentKeys) {
+      if (!CommonUtil.isEmpty(queryParams[key])) {
+        payload[constants.ValidSwitchPMVendorAssignmentKeys[key]] =
+          typeof queryParams[key] == "string"
+            ? CommonUtil.sanitizeString(queryParams[key])
+            : queryParams[key];
+      }
+      else if(queryParams[key] == ''){
+        payload[constants.ValidSwitchPMVendorAssignmentKeys[key]] = null
+      }
+    }
+    
+    if (Object.values(payload).length !== 6) {
+      return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
+        HttpStatus.BAD_REQUEST,
+        "Please provide all required fields in the request body!",
+      ));
+    }
+
+
+    let data = await this.switchRepo.setSwitchPmVendorAssignment(payload);
+    if(data.rowsAffected===0){
+      throw "Something went wrong! unable to add the association"
+    }
+    return res.status(HttpStatus.OK)
+    .json(ApiResponseObject(
+      HttpStatus.OK,
+     'Switch pm vendor assignment added/updated successfully!'
+    ));
+    } catch (error) {
+      this.logger.error(error.message);
+          return res.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .json(
+            ApiResponseObject(HttpStatus.INTERNAL_SERVER_ERROR,"Something went wrong! try again later.")
+          );
+    }
+      }
+
+
+
+INSERT INTO VZW_VENDOR_ASSIGNMENTS(SOURCE_TYPE,SOURCE_ID,VENDOR_ID,PM_CATEGORY,META_UNIVERSAL_ID,META_CREATED_DATE,META_CREATED_BY,META_LAST_UPDATED_DATE,META_LAST_UPDATED_BY)
+                               VALUES(:SOURCE_TYPE,:SOURCE_ID,:VENDOR_ID,:PM_CATEGORY,:META_UNIVERSAL_ID,SYSDATE,:USER_ID,SYSDATE,:USER_ID)
