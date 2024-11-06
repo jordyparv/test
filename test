@@ -1,25 +1,17 @@
-MERGE INTO SWITCH_ELEMENTS tgt
+Error while executing the query Error: ORA-00001: unique constraint (IOPADMIN.PK_SWITCH_ELEMENTS) violated
+Error while executing the query sql is : MERGE INTO SWITCH_ELEMENTS tgt
 USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
 ON (src.id = tgt.META_UNIVERSAL_ID)
 WHEN MATCHED THEN
     UPDATE SET
-        tgt.ELEMENT_ID = :ELEMENT_ID,
         tgt.DESCRIPTION = :DESCRIPTION,
         tgt.ELEMENT_DIVISION = :ELEMENT_DIVISION,
         tgt.ELEMENT_DEPT = :ELEMENT_DEPT,
         tgt.ELEMENT_SUB_DEPT = :ELEMENT_SUB_DEPT,
         tgt.IS_DISABLED = :IS_DISABLED,
-        tgt.META_CREATED_DATE = 
-            CASE 
-                WHEN :META_CREATED_DATE IS NOT NULL THEN TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS')
-                ELSE tgt.META_CREATED_DATE
-            END,
+        tgt.META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
         tgt.META_CREATED_BY = :META_CREATED_BY,
-        tgt.META_LAST_UPDATED_DATE = 
-            CASE 
-                WHEN :META_LAST_UPDATED_DATE IS NOT NULL THEN TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS')
-                ELSE tgt.META_LAST_UPDATED_DATE
-            END,
+        tgt.META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
         tgt.META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY,
         tgt.NO_DIRTRACKER = :NO_DIRTRACKER
 WHEN NOT MATCHED THEN
@@ -51,7 +43,8 @@ WHEN NOT MATCHED THEN
         :META_LAST_UPDATED_BY,
         :NO_DIRTRACKER
     )
-    -- Here, ensure the new rows don't violate constraints
-    ON DUPLICATE KEY UPDATE 
-    -- This part might need adjustments for unique constraints if necessary
-    tgt.META_UNIVERSAL_ID = :META_UNIVERSAL_ID;
+Error while executing the query params are : {"ELEMENT_ID":202,"DESCRIPTION":"","ELEMENT_DIVISION":"MTCE","ELEMENT_DEPT":"VRAN","ELEMENT_SUB_DEPT":"SS/VDU","IS_DISABLED":0,"META_UNIVERSAL_ID":"03933C5FF1BAC1236DACACB07BB60E78","META_CREATED_DATE":"2023-07-19 09:48:01","META_CREATED_BY":"c2","META_LAST_UPDATED_DATE":"2023-07-19 09:48:01","META_LAST_UPDATED_BY":"c2","NO_DIRTRACKER":0}
+[Error: ORA-00001: unique constraint (IOPADMIN.PK_SWITCH_ELEMENTS) violated] {
+  errorNum: 1,
+  offset: 0
+}
