@@ -1,7 +1,9 @@
-Error report -
-SQL Error: ORA-00001: unique constraint (IOPADMIN.IX_VZW_VENDOR_ASSIGNMENTS_SOURCE_TYPE_2) violated
-00001. 00000 -  "unique constraint (%s.%s) violated"
-*Cause:    An UPDATE or INSERT statement attempted to insert a duplicate key.
-           For Trusted Oracle configured in DBMS MAC mode, you may see
-           this message if a duplicate entry exists at a different level.
-*Action:   Either remove the unique restriction or do not insert the key.
+SELECT constraint_name,
+       constraint_type,
+       table_name,
+       status,
+       deferrable,
+       deferred,
+       last_change
+FROM user_constraints
+WHERE table_name = 'YOUR_TABLE_NAME';
