@@ -1,22 +1,45 @@
-OWNER                        VARCHAR2(128)  
-CONSTRAINT_NAME     NOT NULL VARCHAR2(128)  
-CONSTRAINT_TYPE              VARCHAR2(1)    
-TABLE_NAME          NOT NULL VARCHAR2(128)  
-SEARCH_CONDITION             LONG           
-SEARCH_CONDITION_VC          VARCHAR2(4000) 
-R_OWNER                      VARCHAR2(128)  
-R_CONSTRAINT_NAME            VARCHAR2(128)  
-DELETE_RULE                  VARCHAR2(9)    
-STATUS                       VARCHAR2(8)    
-DEFERRABLE                   VARCHAR2(14)   
-DEFERRED                     VARCHAR2(9)    
-VALIDATED                    VARCHAR2(13)   
-GENERATED                    VARCHAR2(14)   
-BAD                          VARCHAR2(3)    
-RELY                         VARCHAR2(4)    
-LAST_CHANGE                  DATE           
-INDEX_OWNER                  VARCHAR2(128)  
-INDEX_NAME                   VARCHAR2(128)  
-INVALID                      VARCHAR2(7)    
-VIEW_RELATED                 VARCHAR2(14)   
-ORIGIN_CON_ID                NUMBER  
+MERGE INTO SWITCH_ELEMENTS tgt
+USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
+ON (src.id = tgt.META_UNIVERSAL_ID)
+WHEN MATCHED THEN
+    UPDATE SET
+        tgt.ELEMENT_ID = :ELEMENT_ID,
+        tgt.DESCRIPTION = :DESCRIPTION,
+        tgt.ELEMENT_DIVISION = :ELEMENT_DIVISION,
+        tgt.ELEMENT_DEPT = :ELEMENT_DEPT,
+        tgt.ELEMENT_SUB_DEPT = :ELEMENT_SUB_DEPT,
+        tgt.IS_DISABLED = :IS_DISABLED,
+        tgt.META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.META_CREATED_BY = :META_CREATED_BY,
+        tgt.META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+        tgt.META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY,
+        tgt.NO_DIRTRACKER = :NO_DIRTRACKER
+WHEN NOT MATCHED THEN
+    INSERT (
+        ELEMENT_ID,
+        DESCRIPTION,
+        ELEMENT_DIVISION,
+        ELEMENT_DEPT,
+        ELEMENT_SUB_DEPT,
+        IS_DISABLED,
+        META_UNIVERSAL_ID,
+        META_CREATED_DATE,
+        META_CREATED_BY,
+        META_LAST_UPDATED_DATE,
+        META_LAST_UPDATED_BY,
+        NO_DIRTRACKER
+    )
+    VALUES (
+        :ELEMENT_ID,
+        :DESCRIPTION,
+        :ELEMENT_DIVISION,
+        :ELEMENT_DEPT,
+        :ELEMENT_SUB_DEPT,
+        :IS_DISABLED,
+        :META_UNIVERSAL_ID,
+        TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+        :META_CREATED_BY,
+        TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
+        :META_LAST_UPDATED_BY,
+        :NO_DIRTRACKER
+    )
