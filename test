@@ -1,72 +1,61 @@
-const opsIopSwitchColMap = {
-  switch_unid: "meta_universalid",
-  area: "area",
-  region: "region",
-  market: "market",
-  switch: "switch",
-  locationid: "locationid",
-  location_type: "location_type",
-  brand: "brand",
-  state_code: "state_code",
-  switch_code: "switch_code",
-  switch_clli: "clli",
-  nss_switch: "nss_switch",
-  nss_switch2: "nss_switch2",
-  nss_switch3: "nss_switch3",
-  nss_locationid: "nss_locationid",
-  lucent_switch: "lucent_switch",
-  lucent_switch2: "lucent_switch2",
-  lucent_switch3: "lucent_switch3",
-  ca_switch: "ca_switch",
-  ca_switch2: "ca_switch2",
-  ca_switch3: "ca_switch3",
-  remedy_switch: "remedy_switch",
-  remedy_switch2: "remedy_switch2",
-  remedy_switch3: "remedy_switch3",
-  remedy_switch4: "remedy_switch4",
-  xing_id: "xing_id",
-  switch_network_id: "network_id",
-  lte_switch: "lte_switch",
-  lte_switch2: "lte_switch2",
-  lte_switch3: "lte_switch3",
-  switch_emis_id: "emis_id",
-  emis_switch: "emis_switch",
-  emis_switch2: "emis_switch2",
-  emis_switch3: "emis_switch3",
-  v_zone_name: "v_zone_name",
-  ps_loc: "ps_loc",
-  switch_status: "switch_status",
-  site_function: "site_function",
-  description: "description",
-  longitude_decimal: "longitude_decimal",
-  latitude_decimal: "latitude_decimal",
-  address: "address",
-  city: "city",
-  zip: "zip",
-  county: "county",
-  locus_id: "locus_id",
-  mdg_id: "mdg_id",
-  env_alarm_next_test: "env_alarm_next_test",
-  phone_number: "phone_number",
-  st: "st",
-  root_drive_ca: "root_drive_ca",
-  emis_lastverifiedon: "emis_lastverifiedon",
-  emis_lastverifiedby: "emis_lastverifiedby",
-  emis_nextverification: "emis_nextverification",
-  aws_mec: "aws_mec",
-  df_v_zone_name: "df_v_zone_name",
-  direction: "direction",
-  mec_google: "mec_google",
-  mec_microsoft: "mec_microsoft",
-  remedy_switch5: "remedy_switch5",
-  remedy_switch_cz: "remedy_switch_cz",
-  vsm_switch: "vsm_switch",
-  company_code: "company_code",
-  env_alarms_tested: "env_alarms_tested",
-  env_nocc_monitored: "env_nocc_monitored",
-  meta_createddate: "meta_createddate",
-  meta_createdby: "meta_createdby",
-  meta_lastupdatedate: "meta_lastupdatedate",
-  meta_lastupdateby: "meta_lastupdateby",
-  primary_switch_unid: "primary_switch_unid",
-};
+const sql = require("mssql");
+const fs = require("fs");
+const config = require("config");
+class MsSqlUtil {
+  constructor() {
+    this.config = this.getConfig();
+    this.pool = new sql.ConnectionPool(this.config);
+    this.poolPromise = this.pool.connect();
+  }
+
+  getConfig() {
+    try {
+      const otConfig = JSON.parse(
+        fs.readFileSync(config.opsTrackerDbConfig.filePath, "utf8")
+      );
+      return otConfig;
+    } catch (error) {
+      console.error("error while read opsTracker db config");
+    }
+  }
+  async getPool() {
+    return this.pool;
+  }
+
+  async connect() {
+    try {
+      await this.poolPromise;
+      console.info(
+        "MS SQL connection pool created and connected to SQL Server"
+      );
+    } catch (error) {
+      console.error("Error creating connection pool: ", error);
+      throw error;
+    }
+  }
+
+  async disconnect() {
+    try {
+      await this.pool.close();
+      console.log("Connection to SQL Server closed");
+    } catch (error) {
+      console.error("Error closing connection SQL Server: ", error);
+      throw error;
+    }
+  }
+
+  async executeQuery(sqlQuery) {
+    try {
+      console.log(`Executing Query: ${sqlQuery}`);
+      await this.connect();
+      const result = await this.pool.request().query(sqlQuery);
+      return result.recordset;
+    } catch (error) {
+      console.error("Error executing SQL query: ", error);
+      await this.disconnect();
+      throw error;
+    }
+  }
+}
+
+module.exports = MsSqlUtil;
