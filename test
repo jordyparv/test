@@ -1,61 +1,82 @@
-const sql = require("mssql");
-const fs = require("fs");
-const config = require("config");
+import * as sql from 'mssql';
+import * as fs from 'fs';
+import * as config from 'config';
+
+interface DbConfig {
+  user: string;
+  password: string;
+  server: string;
+  database: string;
+  options: {
+    encrypt: boolean;
+    trustServerCertificate: boolean;
+  };
+}
+
 class MsSqlUtil {
+  private config: DbConfig;
+  private pool: sql.ConnectionPool;
+  private poolPromise: Promise<sql.ConnectionPool>;
+
   constructor() {
     this.config = this.getConfig();
     this.pool = new sql.ConnectionPool(this.config);
     this.poolPromise = this.pool.connect();
   }
 
-  getConfig() {
+  // Reads configuration from file and returns it as a DbConfig object
+  private getConfig(): DbConfig {
     try {
-      const otConfig = JSON.parse(
-        fs.readFileSync(config.opsTrackerDbConfig.filePath, "utf8")
+      const otConfig: DbConfig = JSON.parse(
+        fs.readFileSync(config.opsTrackerDbConfig.filePath, 'utf8')
       );
       return otConfig;
     } catch (error) {
-      console.error("error while read opsTracker db config");
+      console.error('Error while reading opsTracker db config:', error);
+      throw error; // Propagate error to be handled by the caller
     }
   }
-  async getPool() {
+
+  // Returns the pool instance
+  public async getPool(): Promise<sql.ConnectionPool> {
     return this.pool;
   }
 
-  async connect() {
+  // Connects to the database
+  public async connect(): Promise<void> {
     try {
       await this.poolPromise;
-      console.info(
-        "MS SQL connection pool created and connected to SQL Server"
-      );
+      console.info('MS SQL connection pool created and connected to SQL Server');
     } catch (error) {
-      console.error("Error creating connection pool: ", error);
+      console.error('Error creating connection pool: ', error);
       throw error;
     }
   }
 
-  async disconnect() {
+  // Disconnects from the database
+  public async disconnect(): Promise<void> {
     try {
       await this.pool.close();
-      console.log("Connection to SQL Server closed");
+      console.log('Connection to SQL Server closed');
     } catch (error) {
-      console.error("Error closing connection SQL Server: ", error);
+      console.error('Error closing connection to SQL Server: ', error);
       throw error;
     }
   }
 
-  async executeQuery(sqlQuery) {
+  // Executes a SQL query and returns the result
+  public async executeQuery(sqlQuery: string): Promise<any> {
     try {
       console.log(`Executing Query: ${sqlQuery}`);
       await this.connect();
       const result = await this.pool.request().query(sqlQuery);
       return result.recordset;
     } catch (error) {
-      console.error("Error executing SQL query: ", error);
+      console.error('Error executing SQL query: ', error);
       await this.disconnect();
       throw error;
     }
   }
 }
 
-module.exports = MsSqlUtil;
+export default MsSqlUtil;
