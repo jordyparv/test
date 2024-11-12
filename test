@@ -1,83 +1,12 @@
-● Test suite failed to run
-
-    ENOENT: no such file or directory, open 'C:\Users\kumpa3m\Documents\ops\switch_service_nest\node:events'
-
-      at Runtime.readFile (../node_modules/jest-runtime/build/index.js:1987:21)
-      at Object.<anonymous> (../node_modules/mssql/lib/base/connection-pool.js:3:26)
-
-
-
-
-import { Injectable } from '@nestjs/common';
-import { ConnectionPool, config as SqlConfig } from 'mssql';
-const fs = require("fs");
-const config = require("config");
-@Injectable()
-class MsSqlUtil {
-  private config: SqlConfig;
-  private pool: ConnectionPool;
-  private poolPromise: Promise<ConnectionPool>;
-
-  constructor() {
-    this.config = this.getConfig();
-    this.pool = new ConnectionPool(this.config);
-    this.poolPromise = this.pool.connect();
-  }
-
-  // Reads configuration from file and returns it as a SqlConfig object
-  private getConfig(): SqlConfig {
-
-    try {
-      const otConfig = JSON.parse(
-        fs.readFileSync(config.opsTrackerDB.filePath, 'utf8')
-      );
-      return otConfig.mssqlConfig;
-    } catch (error) {
-      console.error('Error while reading opsTracker db config:', error);
-      throw error; // Propagate error to be handled by the caller
-    }
-  }
-
-  // Returns the pool instance
-  public async getPool(): Promise<ConnectionPool> {
-    return this.pool;
-  }
-
-  // Connects to the database
-  public async connect(): Promise<void> {
-    try {
-      await this.poolPromise;
-      console.info('MS SQL connection pool created and connected to SQL Server');
-    } catch (error) {
-      console.error('Error creating connection pool: ', error);
-      throw error;
-    }
-  }
-
-  // Disconnects from the database
-  public async disconnect(): Promise<void> {
-    try {
-      await this.pool.close();
-      console.log('Connection to SQL Server closed');
-    } catch (error) {
-      console.error('Error closing connection to SQL Server: ', error);
-      throw error;
-    }
-  }
-
-  // Executes a SQL query and returns the result
-  public async executeQuery(sqlQuery: string): Promise<any> {
-    try {
-      console.log(`Executing Query: ${sqlQuery}`);
-      await this.connect();
-      const result = await this.pool.request().query(sqlQuery);
-      return result.recordset;
-    } catch (error) {
-      console.error('Error executing SQL query: ', error);
-      await this.disconnect();
-      throw error;
-    }
-  }
-}
-
-export default MsSqlUtil;
+jest.mock('mssql', () => {
+  return {
+    ConnectionPool: jest.fn().mockImplementation(() => {
+      return {
+        request: jest.fn().mockReturnThis(),
+        query: jest.fn().mockResolvedValue({ recordset: [] }),
+        close: jest.fn().mockResolvedValue(undefined),
+      };
+    }),
+    config: {},
+  };
+});
