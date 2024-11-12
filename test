@@ -1,235 +1,109 @@
- OpsTechColName:[
-    "tech_name",
-    "tech_name_2",
-    "tech_name_3",
-    "tech_name_4",
-    "tech_name_5",
-    "tech_name_6",
-    "tech_name_7",
-    "tech_name_8",
-    "tech_name_9",
-    "tech_name_10",
-    "tech_name_11",
-    "tech_name_12",
-    "tech_name_13",
-    "tech_name_14",
-    "tech_name_15",
-    "tech_name_16",
-    "tech_name_17",
-    "tech_name_18",
-    "tech_name_19",
-    "tech_name_20",
-    "tech_name_21",
-    "tech_name_22",
-    "tech_name_23",
-    "tech_name_24",
-    "tech_name_25",
-    "tech_name_26",
-    "tech_name_27",
-    "tech_name_28",
-    "tech_name_29",
-    "tech_name_30"
-  ],
-  OpsMgrColName:[
-    "manager_id",
-    "manager_id_2",
-  ],
-  OpsImpEngColName:[   
-    "IMP_ENGINEER_ID",
-    "IMP_MANAGER_ID"]
+// Constants for column names
+const constants = {
+    OpsTechColName: [
+        "tech_name", "tech_name_2", "tech_name_3", "tech_name_4", "tech_name_5", "tech_name_6",
+        "tech_name_7", "tech_name_8", "tech_name_9", "tech_name_10", "tech_name_11", "tech_name_12",
+        "tech_name_13", "tech_name_14", "tech_name_15", "tech_name_16", "tech_name_17", "tech_name_18",
+        "tech_name_19", "tech_name_20", "tech_name_21", "tech_name_22", "tech_name_23", "tech_name_24",
+        "tech_name_25", "tech_name_26", "tech_name_27", "tech_name_28", "tech_name_29", "tech_name_30"
+    ],
+    OpsMgrColName: ["manager_id", "manager_id_2"],
+    OpsImpEngColName: ["IMP_ENGINEER_ID", "IMP_MANAGER_ID"]
+};
 
+// Sample insertBindParams with roles and user IDs
+const insertBindParams = [
+    { switchUnid: 'SWITCH001', role: 'SWITCH_TECHNICIAN', userid: 'John_Doe', fname: 'John', lname: 'Doe' },
+    { switchUnid: 'SWITCH001', role: 'SWITCH_MANAGER', userid: 'Jane_Smith', fname: 'Jane', lname: 'Smith' },
+    { switchUnid: 'SWITCH001', role: 'IMPLEMENTATION_ENGINEER', userid: 'Alice_Johnson', fname: 'Alice', lname: 'Johnson' },
+    { switchUnid: 'SWITCH002', role: 'SWITCH_TECHNICIAN', userid: 'Mike_Brown', fname: 'Mike', lname: 'Brown' },
+    { switchUnid: 'SWITCH002', role: 'SWITCH_MANAGER', userid: 'Sarah_Davis', fname: 'Sarah', lname: 'Davis' },
+    { switchUnid: 'SWITCH002', role: 'IMPLEMENTATION_ENGINEER', userid: 'Robert_Wilson', fname: 'Robert', lname: 'Wilson' },
+    { switchUnid: 'SWITCH003', role: 'SWITCH_TECHNICIAN', userid: 'Emily_Miller', fname: 'Emily', lname: 'Miller' },
+    { switchUnid: 'SWITCH003', role: 'SWITCH_MANAGER', userid: 'David_Taylor', fname: 'David', lname: 'Taylor' },
+    { switchUnid: 'SWITCH003', role: 'IMPLEMENTATION_ENGINEER', userid: 'Olivia_Moore', fname: 'Olivia', lname: 'Moore' },
+    { switchUnid: 'SWITCH004', role: 'SWITCH_TECHNICIAN', userid: 'Daniel_Anderson', fname: 'Daniel', lname: 'Anderson' },
+    { switchUnid: 'SWITCH004', role: 'SWITCH_MANAGER', userid: 'Rachel_Jackson', fname: 'Rachel', lname: 'Jackson' },
+    { switchUnid: 'SWITCH004', role: 'IMPLEMENTATION_ENGINEER', userid: 'James_Lee', fname: 'James', lname: 'Lee' },
+    { switchUnid: 'SWITCH005', role: 'SWITCH_TECHNICIAN', userid: 'Sophia_Harris', fname: 'Sophia', lname: 'Harris' },
+    { switchUnid: 'SWITCH005', role: 'SWITCH_MANAGER', userid: 'William_Clark', fname: 'William', lname: 'Clark' },
+    { switchUnid: 'SWITCH005', role: 'IMPLEMENTATION_ENGINEER', userid: 'Liam_Lewis', fname: 'Liam', lname: 'Lewis' },
+    { switchUnid: 'SWITCH006', role: 'SWITCH_TECHNICIAN', userid: 'Grace_Walker', fname: 'Grace', lname: 'Walker' },
+    { switchUnid: 'SWITCH006', role: 'SWITCH_MANAGER', userid: 'Christopher_Allen', fname: 'Christopher', lname: 'Allen' },
+    { switchUnid: 'SWITCH006', role: 'IMPLEMENTATION_ENGINEER', userid: 'Ava_Young', fname: 'Ava', lname: 'Young' },
+    { switchUnid: 'SWITCH007', role: 'SWITCH_TECHNICIAN', userid: 'Lucas_King', fname: 'Lucas', lname: 'King' },
+    { switchUnid: 'SWITCH007', role: 'SWITCH_MANAGER', userid: 'Amelia_Scott', fname: 'Amelia', lname: 'Scott' },
+    { switchUnid: 'SWITCH007', role: 'IMPLEMENTATION_ENGINEER', userid: 'Henry_Green', fname: 'Henry', lname: 'Green' }
+];
 
+// Provided contactData
+const contactData = { 
+  "LocationId": 934,
+  "AREA": "HQ",
+  "REGION": "NEC",
+  "Market": "Broadsoft TAS",
+  "SWITCH": "Branchburg TAS",
+  "SITE_FUNCTION": "Switch",
+  "BRAND": "Lucent",
+  "Description": "",
+  "Address": "",
+  "City": "",
+  "st": "",
+  "Zip": "",
+  "County": "",
+  "latitude": "",
+  "longitude": "",
+  "GATE_COMBO": "",
+  "GATE_COMBO2": "",
+  "DIRECTION": "",
+  "RESTRICTION": "",
+  "tech_name": "procejo",  // Already populated
+  "tech_name_2": "",
+  "tech_name_3": "",
+  "tech_name_4": "", // Should be populated if empty
+  "tech_name_5": "",
+  "manager_id": "sepulje",  // Already populated
+  "manager_id_2": "",
+  "IMP_ENGINEER_ID": "",
+  "IMP_MANAGER_ID": "",
+  // Other fields omitted for brevity...
+};
 
-insertBindParams.push({ switchUnid, role, userid, fname, lname });
+// Initialize apiPayload as an empty object
+let apiPayload = {};
 
-   const [contactData] = await mssqlCon.executeQuery(getSwitchDetailFromSwitchLoc)
-
-         for(let key in contactData ){
-          if(constants.OpsTechColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+  for(let key in contactData ){
+          if(constants.OpsTechColName.includes(key) && (contactData[key] == null || contactData[key] == "")){
             apiPayload[key] = null
           }
-          if(constants.OpsMgrColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+          if(constants.OpsMgrColName.includes(key) && (contactData[key] == null || contactData[key] == "")){
             apiPayload[key] = null
           }
-          if(constants.OpsImpEngColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+          if(constants.OpsImpEngColName.includes(key) && (contactData[key] == null || contactData[key] == "")){
             apiPayload[key] = null
           }
          }
 
-         let techs = insertBindParams.filter(item=>item.role=='SWITCH_TECHNICIAN')?.map(item=>item.userid)
-         let mgr = insertBindParams.filter(item=>item.role=='SWITCH_MANAGER')?.map(item=>item.userid)
-         let impEng = insertBindParams.filter(item=>item.role=='IMPLEMENTATION_ENGINEER')?.map(item=>item.userid)
-         for(let i = 0; i<Object.keys(apiPayload).length;i++){
-          constants.OpsTechColName.forEach(item=>{
-         
-          })
+// Get the list of user IDs for each role (techs, mgr, impEng)
+let techs = insertBindParams.filter(item => item.role === 'SWITCH_TECHNICIAN').map(item => item.userid);
+let mgrs = insertBindParams.filter(item => item.role === 'SWITCH_MANAGER').map(item => item.userid);
+let impEngs = insertBindParams.filter(item => item.role === 'IMPLEMENTATION_ENGINEER').map(item => item.userid);
+// Output the final apiPayload
+
+for(let key in apiPayload){
+    let tech = constants.OpsTechColName.includes(key) && techs.shift()
+    let mgr  =constants.OpsMgrColName.includes(key)&& mgrs.shift()
+    let impEng = constants.OpsImpEngColName.includes(key)&&impEngs.shift()
+    if(constants.OpsTechColName.includes(key)&&tech){
+        apiPayload[key] = tech
+    }
+    else if(constants.OpsMgrColName.includes(key)&&mgr){
+        apiPayload[key] = mgr
+    }
+    else if(constants.OpsImpEngColName.includes(key)&&impEng){
+        apiPayload[key] = impEng
+    }
+}
+console.log(apiPayload);
 
 
-
- {
-    "LocationId": 934,
-    "AREA": "HQ",
-    "REGION": "NEC",
-    "Market": "Broadsoft TAS",
-    "SWITCH": "Branchburg TAS",
-    "SITE_FUNCTION": "Switch",
-    "BRAND": "Lucent",
-    "Description": "",
-    "Address": "",
-    "City": "",
-    "st": "",
-    "Zip": "",
-    "County": "",
-    "latitude": "",
-    "longitude": "",
-    "GATE_COMBO": "",
-    "GATE_COMBO2": "",
-    "DIRECTION": "",
-    "RESTRICTION": "",
-    "tech_name": "procejo",
-    "tech_name_2": "",
-    "tech_name_3": "",
-    "tech_name_4": "",
-    "tech_name_5": "",
-    "META_UNIVERSALID": "4CB9F918937C0A95EEA77293CF9B0FD4",
-    "META_CREATEDDATE": "2021-04-13T08:25:50.000Z",
-    "META_CREATEDBY": "sepulje",
-    "META_LASTUPDATEDATE": "2021-05-11T15:11:53.000Z",
-    "META_LASTUPDATEBY": "c0nguma",
-    "CLLI": "",
-    "POINT_CODE": "",
-    "HLR_CLLI": "",
-    "HLR_POINT_CODE": "",
-    "ALIAS_POINT_CODE": "",
-    "LAUNCH_DATE": "1900-01-01T00:00:00.000Z",
-    "tech_name_6": "",
-    "tech_name_7": "",
-    "tech_name_8": "",
-    "tech_name_9": "",
-    "tech_name_10": "",
-    "manager_id": "sepulje",
-    "manager_id_2": "",
-    "GEN_STATUS": 0,
-    "DC_PLANTLOAD_AMPS": 0,
-    "DC_PLANTLOAD_AMPS_UPDATEDDATE": "1900-01-01T00:00:00.000Z",
-    "DC_PLANTLOAD_AMPS_UPDATEDBY": "",
-    "DC_PLANTLOAD_VOLTS": 0,
-    "DC_PLANTLOAD_VOLTS_UPDATEDDATE": "1900-01-01T00:00:00.000Z",
-    "DC_PLANTLOAD_VOLTS_UPDATEDBY": "",
-    "GEN_REMAININGHOURS": 0,
-    "PS_LOC": "",
-    "NSS_SWITCH": "",
-    "NSS_SWITCH2": "",
-    "NSS_SWITCH3": "",
-    "NSS_LOCATIONID": 0,
-    "NSS_LATITUDE_DECIMAL": 0,
-    "NSS_LONGITUDE_DECIMAL": 0,
-    "LUCENT_SWITCH": "",
-    "LUCENT_SWITCH2": "",
-    "LUCENT_SWITCH3": "",
-    "CA_SWITCH": "",
-    "CA_SWITCH2": "",
-    "CA_SWITCH3": "",
-    "REMEDY_SWITCH": "",
-    "REMEDY_SWITCH2": "",
-    "REMEDY_SWITCH3": "",
-    "REMEDY_SWITCH4": "",
-    "REMEDY_SWITCH5": "",
-    "LATITUDE_DECIMAL": 0,
-    "LONGITUDE_DECIMAL": 0,
-    "XAXIS": 1,
-    "YAXIS": 0,
-    "ZAXIS": 0,
-    "SWITCH_NO_PM": true,
-    "SITES_NO_PM": true,
-    "CIRCUITS": "",
-    "CIRCUITS_TELCO_OUTAGES": "",
-    "XING_ID": 0,
-    "NETWORK_ID": 0,
-    "tech_name_11": "",
-    "tech_name_12": "",
-    "tech_name_13": "",
-    "tech_name_14": "",
-    "tech_name_15": "",
-    "tech_name_16": "",
-    "tech_name_17": "",
-    "tech_name_18": "",
-    "tech_name_19": "",
-    "tech_name_20": "",
-    "tech_name_21": "",
-    "tech_name_22": "",
-    "tech_name_23": "",
-    "tech_name_24": "",
-    "tech_name_25": "",
-    "tech_name_26": "",
-    "tech_name_27": "",
-    "tech_name_28": "",
-    "tech_name_29": "",
-    "tech_name_30": "",
-    "LTE_SWITCH": "",
-    "LTE_SWITCH2": "",
-    "LTE_SWITCH3": "",
-    "EMIS_ID": "0",
-    "EMIS_ID_MESSAGE": "",
-    "EMIS_SWITCH": "",
-    "EMIS_SWITCH2": "",
-    "EMIS_SWITCH3": "",
-    "DC_PLANTLOAD_VOLTS_UL": 0,
-    "DC_PLANTLOAD_VOLTS_UL_DATE": "1900-01-01T00:00:00.000Z",
-    "DC_PLANTLOAD_VOLTS_UL_BY": "",
-    "CALLOUT_ZONE_INTERNAL_ID": 0,
-    "NOB_INSTALLED": 0,
-    "EMIS_SITE_HAS_GENERATOR": 0,
-    "NUM_HVACS": 0,
-    "NUM_HVACS_WITH_ECONOMIZER": 0,
-    "FUELMON_INSTALLED": "1900-01-01T00:00:00.000Z",
-    "TVSS_INSTALLED": "1900-01-01T00:00:00.000Z",
-    "FUEL_COMPANY": "",
-    "FUEL_ACCOUNT": "",
-    "LAST_FUELED_DATE": "1900-01-01T00:00:00.000Z",
-    "VSM_SWITCH": "",
-    "STATE_CODE": "",
-    "SWITCH_CODE": "",
-    "EMIS_LASTVERIFIEDON": "1900-01-01T00:00:00.000Z",
-    "EMIS_LASTVERIFIEDBY": "",
-    "OfficeVoltageHere": 0,
-    "DC_PLANTLOAD_AMPS48": 0,
-    "DC_PLANTLOAD_AMPS48_UPDATEDBY": "",
-    "DC_PLANTLOAD_AMPS48_UPDATEDDT": "1900-01-01T00:00:00.000Z",
-    "DC_PLANTLOAD_VOLTS48": 0,
-    "DC_PLANTLOAD_VOLTS48_UL": 0,
-    "DC_PLANTLOAD_VOLTS48_UL_BY": "",
-    "DC_PLANTLOAD_VOLTS48_UL_DATE": "1900-01-01T00:00:00.000Z",
-    "DC_PLANTLOAD_VOLTS48_UPDATEDBY": "",
-    "DC_PLANTLOAD_VOLTS48_UPDATEDDT": "1900-01-01T00:00:00.000Z",
-    "SUBMARKET_UNID": "                                ",
-    "V_ZONE_NAME": "",
-    "PHONE_NUMBER": "",
-    "DF_IS_FIBERNODES": 0,
-    "PRIMARY_SWITCH_UNID": "                                ",
-    "EMIS_LASTUPDATED": "1900-01-01T00:00:00.000Z",
-    "EMIS_NEXTVERIFICATION": "1900-01-01T00:00:00.000Z",
-    "EMIS_VERIFICATION_ELIGIBLE": false,
-    "DF_V_ZONE_NAME": "",
-    "REMEDY_SWITCH_CZ": "",
-    "ENV_ALARMS_TESTED": "1900-01-01T00:00:00.000Z",
-    "ENV_ALARM_NEXT_TEST": "",
-    "ENV_NOCC_MONITORED": 0,
-    "LOCATION_TYPE": "",
-    "PHYSICAL_LOCATION_PMS": false,
-    "IMP_ENGINEER_ID": "",
-    "IMP_MANAGER_ID": "",
-    "AREA_PRIORREORG": null,
-    "MARKET_PRIORREORG": null,
-    "REGION_PRIORREORG": null,
-    "SWITCH_PRIORREORG": null,
-    "SWITCH_STATUS": "live",
-    "ROOT_DRIVE_CA": "",
-    "AWS_MEC": false,
-    "LOCUS_ID": "",
-    "MDG_ID": "",
-    "COMPANY_CODE": null,
-    "MEC_GOOGLE": false,
-    "MEC_MICROSOFT": false,
-    "LAST_GEN_REMAININGHOURS_CHANGE": "1900-01-01T00:00:00.000Z"
-  }
