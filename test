@@ -1,2 +1,12 @@
-                                                                                                        
-    ENOENT: no such file or directory, import { ConnectionPool, config as SqlConfig } from 'mssql';   
+jest.mock('mssql', () => {
+  return {
+    ConnectionPool: jest.fn().mockImplementation(() => {
+      return {
+        connect: jest.fn().mockResolvedValue(true),
+        query: jest.fn().mockResolvedValue({ recordset: [] }),
+        close: jest.fn(),
+      };
+    }),
+    config: {},
+  };
+});
