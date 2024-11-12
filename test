@@ -1,82 +1,66 @@
-import * as sql from 'mssql';
-import * as fs from 'fs';
-import * as config from 'config';
+ OpsTechColName:[
+    "tech_name",
+    "tech_name_2",
+    "tech_name_3",
+    "tech_name_4",
+    "tech_name_5",
+    "tech_name_6",
+    "tech_name_7",
+    "tech_name_8",
+    "tech_name_9",
+    "tech_name_10",
+    "tech_name_11",
+    "tech_name_12",
+    "tech_name_13",
+    "tech_name_14",
+    "tech_name_15",
+    "tech_name_16",
+    "tech_name_17",
+    "tech_name_18",
+    "tech_name_19",
+    "tech_name_20",
+    "tech_name_21",
+    "tech_name_22",
+    "tech_name_23",
+    "tech_name_24",
+    "tech_name_25",
+    "tech_name_26",
+    "tech_name_27",
+    "tech_name_28",
+    "tech_name_29",
+    "tech_name_30"
+  ],
+  OpsMgrColName:[
+    "manager_id",
+    "manager_id_2",
+  ],
+  OpsImpEngColName:[   
+    "IMP_ENGINEER_ID",
+    "IMP_MANAGER_ID"]
 
-interface DbConfig {
-  user: string;
-  password: string;
-  server: string;
-  database: string;
-  options: {
-    encrypt: boolean;
-    trustServerCertificate: boolean;
-  };
-}
 
-class MsSqlUtil {
-  private config: DbConfig;
-  private pool: sql.ConnectionPool;
-  private poolPromise: Promise<sql.ConnectionPool>;
 
-  constructor() {
-    this.config = this.getConfig();
-    this.pool = new sql.ConnectionPool(this.config);
-    this.poolPromise = this.pool.connect();
-  }
+insertBindParams.push({ switchUnid, role, userid, fname, lname });
 
-  // Reads configuration from file and returns it as a DbConfig object
-  private getConfig(): DbConfig {
-    try {
-      const otConfig: DbConfig = JSON.parse(
-        fs.readFileSync(config.opsTrackerDbConfig.filePath, 'utf8')
-      );
-      return otConfig;
-    } catch (error) {
-      console.error('Error while reading opsTracker db config:', error);
-      throw error; // Propagate error to be handled by the caller
-    }
-  }
+   const [contactData] = await mssqlCon.executeQuery(getSwitchDetailFromSwitchLoc)
 
-  // Returns the pool instance
-  public async getPool(): Promise<sql.ConnectionPool> {
-    return this.pool;
-  }
+         for(let key in contactData ){
+          if(constants.OpsTechColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+            apiPayload[key] = null
+          }
+          if(constants.OpsMgrColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+            apiPayload[key] = null
+          }
+          if(constants.OpsImpEngColName.includes(key) && contactData[key] == null && contactData[key] == ""){
+            apiPayload[key] = null
+          }
+         }
 
-  // Connects to the database
-  public async connect(): Promise<void> {
-    try {
-      await this.poolPromise;
-      console.info('MS SQL connection pool created and connected to SQL Server');
-    } catch (error) {
-      console.error('Error creating connection pool: ', error);
-      throw error;
-    }
-  }
-
-  // Disconnects from the database
-  public async disconnect(): Promise<void> {
-    try {
-      await this.pool.close();
-      console.log('Connection to SQL Server closed');
-    } catch (error) {
-      console.error('Error closing connection to SQL Server: ', error);
-      throw error;
-    }
-  }
-
-  // Executes a SQL query and returns the result
-  public async executeQuery(sqlQuery: string): Promise<any> {
-    try {
-      console.log(`Executing Query: ${sqlQuery}`);
-      await this.connect();
-      const result = await this.pool.request().query(sqlQuery);
-      return result.recordset;
-    } catch (error) {
-      console.error('Error executing SQL query: ', error);
-      await this.disconnect();
-      throw error;
-    }
-  }
-}
-
-export default MsSqlUtil;
+         let techs = insertBindParams.filter(item=>item.role=='SWITCH_TECHNICIAN')?.map(item=>item.userid)
+         let mgr = insertBindParams.filter(item=>item.role=='SWITCH_MANAGER')?.map(item=>item.userid)
+         let impEng = insertBindParams.filter(item=>item.role=='IMPLEMENTATION_ENGINEER')?.map(item=>item.userid)
+         for(let i = 0; i<Object.keys(apiPayload).length;i++){
+          constants.OpsTechColName.forEach(item=>{
+         
+          })
+          
