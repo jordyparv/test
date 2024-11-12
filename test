@@ -1,8 +1,81 @@
+// In your test file (e.g., `mssql-util.spec.ts` or `mssql-util.spec.js`)
+jest.mock('mssql', () => {
+  return {
+    ConnectionPool: jest.fn().mockImplementation(() => {
+      return {
+        request: jest.fn().mockReturnThis(), // Chainable request method
+        query: jest.fn().mockResolvedValue({ recordset: [] }), // Simulate an empty query result
+        close: jest.fn().mockResolvedValue(undefined), // Simulate a successful close
+      };
+    }),
+    config: {}, // If you need to mock specific parts of the config
+  };
+});
 
-    ENOENT: no such file or directory, open 'C:\Users\kumpa3m\Documents\ops\switch_service_nest\node:events'
+import MsSqlUtil from './mssql-util'; // Your MsSqlUtil class
+import { ConnectionPool } from 'mssql'; // Mocked `mssql` module
 
-      1 | import { Injectable } from '@nestjs/common';
-    > 2 | import { ConnectionPool, config as SqlConfig } from 'mssql';
-        | ^
-      3 | const fs = require("fs");
-      4 | const config = require("config");
+describe('MsSqlUtil', () => {
+  let sqlUtil: MsSqlUtil;
+
+  beforeEach(() => {
+    // Initialize a new instance of MsSqlUtil before each test
+    sqlUtil = new MsSqlUtil();
+  });
+
+  it('should create a connection pool on instantiation', () => {
+    // Check if the ConnectionPool constructor was called
+    expect(ConnectionPool).toHaveBeenCalled();
+  });
+
+  it('should successfully connect to the database', async () => {
+    const connectSpy = jest.spyOn(sqlUtil, 'connect').mockResolvedValueOnce(undefined);
+    
+    // Simulate successful connection
+    await sqlUtil.connect();
+
+    // Check if connect was called and no errors occurred
+    expect(connectSpy).toHaveBeenCalled();
+    expect(sqlUtil['poolPromise']).toBeDefined(); // Ensuring pool is set up
+  });
+
+  it('should successfully execute a SQL query', async () => {
+    // Mocking the query response
+    const queryResult = { recordset: [{ id: 1, name: 'test' }] };
+    const querySpy = jest.spyOn(sqlUtil['pool'], 'request').mockReturnThis();
+    jest.spyOn(sqlUtil['pool'], 'query').mockResolvedValueOnce(queryResult);
+
+    // Call executeQuery
+    const result = await sqlUtil.executeQuery('SELECT * FROM Users');
+
+    // Check if query method was called and validate the result
+    expect(querySpy).toHaveBeenCalledWith('SELECT * FROM Users');
+    expect(result).toEqual(queryResult.recordset);
+  });
+
+  it('should handle errors when executing a query', async () => {
+    // Mock query to throw an error
+    jest.spyOn(sqlUtil['pool'], 'query').mockRejectedValueOnce(new Error('Query failed'));
+
+    // Try to execute query and catch the error
+    await expect(sqlUtil.executeQuery('SELECT * FROM Users')).rejects.toThrow('Query failed');
+  });
+
+  it('should disconnect successfully', async () => {
+    const disconnectSpy = jest.spyOn(sqlUtil, 'disconnect').mockResolvedValueOnce(undefined);
+
+    // Simulate successful disconnect
+    await sqlUtil.disconnect();
+
+    // Ensure the disconnect method was called
+    expect(disconnectSpy).toHaveBeenCalled();
+  });
+
+  it('should handle errors when disconnecting', async () => {
+    // Mock the pool close to throw an error
+    jest.spyOn(sqlUtil['pool'], 'close').mockRejectedValueOnce(new Error('Disconnect failed'));
+
+    // Try to disconnect and catch the error
+    await expect(sqlUtil.disconnect()).rejects.toThrow('Disconnect failed');
+  });
+});
