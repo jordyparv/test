@@ -1,22 +1,2 @@
-MERGE INTO VZW_VENDOR_ASSIGNMENTS tgt
-      USING (SELECT :META_UNIVERSAL_ID AS id FROM dual) src
-      ON (TRIM(src.id) = TRIM(tgt.META_UNIVERSAL_ID) and tgt.SOURCE_TYPE!=:SOURCE_ID)
-      WHEN MATCHED THEN
-          UPDATE SET
-              SOURCE_TYPE = :SOURCE_TYPE,
-              SOURCE_ID = :SOURCE_ID,
-              VENDOR_ID = :VENDOR_ID,
-              PM_CATEGORY = :PM_CATEGORY,
-              META_CREATED_DATE = TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-              META_CREATED_BY = :META_CREATED_BY,
-              META_LAST_UPDATED_DATE = TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'),
-              META_LAST_UPDATED_BY = :META_LAST_UPDATED_BY
-      WHEN NOT MATCHED THEN
-          INSERT (SOURCE_TYPE, SOURCE_ID, VENDOR_ID, PM_CATEGORY,
-                  META_UNIVERSAL_ID, META_CREATED_DATE, META_CREATED_BY,
-                  META_LAST_UPDATED_DATE, META_LAST_UPDATED_BY)
-          VALUES (
-              :SOURCE_TYPE, :SOURCE_ID, :VENDOR_ID, :PM_CATEGORY,
-              :META_UNIVERSAL_ID, TO_DATE(:META_CREATED_DATE, 'YYYY-MM-DD HH24:MI:SS'), :META_CREATED_BY,  
-              TO_DATE(:META_LAST_UPDATED_DATE, 'YYYY-MM-DD HH24:MI:SS'), :META_LAST_UPDATED_BY
-          )
+                                                                                                        
+    ENOENT: no such file or directory, import { ConnectionPool, config as SqlConfig } from 'mssql';   
