@@ -1,8 +1,3 @@
-jest.mock('events', () => {
-  return {
-    EventEmitter: jest.fn().mockImplementation(() => ({
-      on: jest.fn(),
-      emit: jest.fn(),
-    })),
-  };
-});
+for contact section we have pull the data opstracker the map the contact column with contact details because
+in switch location table have contact details like tech_name_1,tech_name_2 but in iop have row base data due this 
+in dev server when create ops db connection get dev data but the reverse api update data in prod so when we update contact or delete contact there is mismatch or updation map the data based on dev but update on prod
