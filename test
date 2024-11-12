@@ -1,6 +1,6 @@
-jest.mock('mssql', () => ({
-  ConnectionPool: jest.fn().mockImplementation(() => ({
-    connect: jest.fn().mockResolvedValue(true),
-    close: jest.fn(),
-  })),
-}));
+● Test suite failed to run
+
+    ENOENT: no such file or directory, open 'C:\Users\kumpa3m\Documents\ops\switch_service_nest\node:events'
+
+      at Runtime.readFile (../node_modules/jest-runtime/build/index.js:1987:21)
+      at Object.<anonymous> (../node_modules/mssql/lib/base/connection-pool.js:3:26)
