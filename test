@@ -1,12 +1,8 @@
-jest.mock('mssql', () => {
-  return {
-    ConnectionPool: jest.fn().mockImplementation(() => {
-      return {
-        request: jest.fn().mockReturnThis(),
-        query: jest.fn().mockResolvedValue({ recordset: [] }),
-        close: jest.fn().mockResolvedValue(undefined),
-      };
-    }),
-    config: {},
-  };
-});
+
+    ENOENT: no such file or directory, open 'C:\Users\kumpa3m\Documents\ops\switch_service_nest\node:events'
+
+      1 | import { Injectable } from '@nestjs/common';
+    > 2 | import { ConnectionPool, config as SqlConfig } from 'mssql';
+        | ^
+      3 | const fs = require("fs");
+      4 | const config = require("config");
