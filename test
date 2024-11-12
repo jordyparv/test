@@ -1,4 +1,1 @@
-
-
-      at Runtime.readFile (../node_modules/jest-runtime/build/index.js:1987:21)
-      at Object.<anonymous> (../node_modules/mssql/lib/base/connection-pool.js:3:26)
+ "transformIgnorePatterns": ["/node_modules/(?!mssql)/"]
