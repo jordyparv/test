@@ -1,2 +1,101 @@
+  async editSwitchDetails(req: Request, res: Response) {
+    let { switchUnid: switch_unid } = req.params;
+    try {
+      const queryParams = req.body;
+      switch_unid = CommonUtil.sanitizeString(switch_unid)
+      let switchData = await this.switchRepo.checkSwitchUnidInTable(
+        switch_unid
+      )
 
-Timeout - Async callback was not invoked within the 5000 ms timeout specified by jest.setTimeout.Timeout - Async callback was not invoked within the 5000 ms timeout specified by jest.setTimeout.Error:
+      if (CommonUtil.isEmpty(switchData)) {
+        return res.status(HttpStatus.NOT_FOUND).json(ApiResponseObject(
+          HttpStatus.NOT_FOUND,
+          "Switch unid does not exist!",
+        ));
+      }
+
+      if (Object.values(queryParams).length === 0) {
+        return res.status(HttpStatus.BAD_REQUEST).json(ApiResponseObject(
+          HttpStatus.BAD_REQUEST,
+          "Payload not found in the request body!",
+        ));
+      }
+      
+      let payload = { SWITCH_UNID: switch_unid};
+      
+      for (let key in constants.ValidEditableSwitchDetailsColumns) {
+        if (!CommonUtil.isEmpty(queryParams[key])) {
+          payload[constants.ValidEditableSwitchDetailsColumns[key]] =
+            typeof queryParams[key] == "string"
+              ? CommonUtil.sanitizeString(queryParams[key])
+              : queryParams[key];
+        }
+        else if(queryParams[key] == ''  || queryParams[key] == null ){
+          payload[constants.ValidEditableSwitchDetailsColumns[key]] = null
+        }
+      }
+
+      const data = await this.switchRepo.updateSwitchDetails(payload);
+
+      if (data.rowsAffected != 1) {
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(ApiResponseObject(
+           HttpStatus.INTERNAL_SERVER_ERROR,
+          "Something went wrong; unable to update the data.",
+        ));
+      }
+      if(config.useReverseSync){
+
+        let url = config.service.equipReqUrl;
+        let authHeader = config.app.authHeader;
+        const switchColMap =  constants.OpsIopSwitchColMap
+    let apiPayload = {}
+    const payloadWithLowerCaseKeys = CommonUtil.toLowerCaseKeys(payload)
+    for(let key in switchColMap){
+      if(payloadWithLowerCaseKeys[switchColMap[key]]!==undefined)
+          apiPayload[key] = payloadWithLowerCaseKeys[switchColMap[key]]
+      }
+    let args = {
+      url,
+              method:'put',
+              params:{
+                recordtype: 'C2Switchlocation',
+                meta_universalid: switch_unid 
+              },
+              headers:{
+                'Accept': 'application/json',
+                'Authorization': authHeader,
+                'Content-Type': 'application/json'
+              },
+              data: {
+                data:apiPayload
+              }
+            };
+            try {
+              const data = await axios(args);
+              this.logger.log("Switch details updated",data.data)
+              return res.status(HttpStatus.OK).json(ApiResponseObject(
+                HttpStatus.OK,
+                "Switch details updated!",
+              ));
+            } catch (error) {
+              this.logger.error("Switch details updated, but failed to update switch details in opsTracker",error)
+              return res.status(HttpStatus.OK).json(ApiResponseObject(
+                HttpStatus.OK,
+                "Switch details updated, but failed to update in opsTracker",
+              ));
+            }      
+          }else{
+            return res.status(HttpStatus.OK).json(ApiResponseObject(
+              HttpStatus.OK,
+              "Switch details updated!",
+            ));
+          }
+            
+          } catch (error) {
+            this.logger.error("While updating switch",error.message)
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(ApiResponseObject(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Unable to update the switch details, try again later.",
+      ));
+    }
+  }
