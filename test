@@ -99,3 +99,18 @@
       ));
     }
   }
+
+
+test case 
+ it('should successfully edit switch details but failed reverse sync', async () => {
+      const req = mockRequest({ switchUnid: 'test-switch' }, { key: 'value' });
+      const res = mockResponse();
+      switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch']);
+      switchRepoMock.updateSwitchDetails.mockResolvedValueOnce({ rowsAffected: 1 });
+      switchRepoMock.getIopdetails.mockResolvedValueOnce({});
+
+      await service.editSwitchDetails(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(res.json).toHaveBeenCalledWith(ApiResponseObject(HttpStatus.OK, "Switch details updated!Switch details updated, but failed to update in opsTracker"));
+    });
