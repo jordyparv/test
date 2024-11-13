@@ -1,3 +1,6 @@
+
+Sure, here’s an updated version with grammar corrections for the part about the reverse API updates for other environments:
+
 Hi team,
 
 Switch Detail - Contact Information -> Edit Contact Information:
@@ -5,3 +8,5 @@ Switch Detail - Contact Information -> Edit Contact Information:
 As observed, the Ops Tracker DB establishes a connection with the dev DB, and the reverse API updates the data in UAT. I have replaced the reverse API with the dev DB for now. However, for other environments, we need to configure the Ops Tracker DB setup accordingly, depending on the specific environment.
 
 Switch View Details - Installed Elements and Sub-elements - Add and Edit, PM Information in Switch Detail View:
+
+We currently do not have an API for reverse sync.
