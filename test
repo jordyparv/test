@@ -1,1 +1,10 @@
-npm install --save-dev jest@latest ts-jest@latest @nestjs/testing@latest
+Hi team,
+
+Switch Detail - Contact Information -> Edit Contact information:
+as per observe the ops tracker db establish a connection with dev db and the reverse api update the data in uat
+i have replace the reverse api the with dev for now but for other environment we need to configure ops tracker db setup based on environment
+
+
+Switch view details - Installed Elements and Sub elements - Add and Edit,
+PM Information in Switch Detail view: 
+we dont have api for reverse sync
