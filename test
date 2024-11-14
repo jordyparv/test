@@ -1,4 +1,4 @@
-import _ from 'lodash';
+
 
 static toLowerCaseKeys(input: any): any {
   if (Array.isArray(input)) {
@@ -6,11 +6,19 @@ static toLowerCaseKeys(input: any): any {
       .map(item => this.toLowerCaseKeys(item))
       .filter(item => item !== null && item !== undefined && !(typeof item === 'object' && Object.keys(item).length === 0));
   } else if (input !== null && typeof input === 'object') {
+    // If it's a Date object, return it as is
+    if (input instanceof Date) {
+      return input;
+    }
+
     const result = _.mapValues(
       _.mapKeys(input, (value, key) => key.toLowerCase()), 
       value => this.toLowerCaseKeys(value)
     );
-    return Object.keys(result).length > 0 ? result : undefined; // Return undefined for empty objects, not null
+    
+    // Return undefined for empty objects
+    return Object.keys(result).length > 0 ? result : undefined;
   }
+
   return input;
 }
