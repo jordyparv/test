@@ -1,21 +1,11 @@
-  if (Array.isArray(input)) {
-    // If the input is an array, recursively call lowerCaseKeys on each element and filter out empty objects.
-    return input
-      .map(item => lowerCaseKeys(item))
-      .filter(item => item !== null && item !== undefined && (typeof item !== 'object' || Object.keys(item).length > 0));
-  } else if (input !== null && typeof input === 'object') {
-    // If the input is an object, create a new object with lowercased keys but skip empty or null values.
-    const result = Object.keys(input).reduce((acc, key) => {
-      const value = lowerCaseKeys(input[key]);
-      // Only include the key if the value is not empty, null, or undefined
-      if (value !== null && value !== undefined && (typeof value !== 'object' || Object.keys(value).length > 0)) {
-        acc[key.toLowerCase()] = value;
+ static toLowerCaseKeys(input:any) {
+        if (Array.isArray(input)) {
+          return input.map(item => this.toLowerCaseKeys(item));
+        } else if (input !== null && typeof input === 'object') {
+          return _.mapValues(
+            _.mapKeys(input, (value, key) => key.toLowerCase()),
+            value => this.toLowerCaseKeys(value)
+          );
+        }
+        return input;
       }
-      return acc;
-    }, {});
-    
-    return Object.keys(result).length > 0 ? result : null; // Return null if the object is empty after filtering
-  }
-  
-  // Return the value as is if it's neither an object nor an array.
-  return input;
