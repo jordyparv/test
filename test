@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 static toLowerCaseKeys(input: any): any {
   if (Array.isArray(input)) {
     return input
@@ -8,7 +10,7 @@ static toLowerCaseKeys(input: any): any {
       _.mapKeys(input, (value, key) => key.toLowerCase()), 
       value => this.toLowerCaseKeys(value)
     );
-    return Object.keys(result).length > 0 ? result : null;
+    return Object.keys(result).length > 0 ? result : undefined; // Return undefined for empty objects, not null
   }
   return input;
 }
