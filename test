@@ -1,4 +1,1 @@
-curl -X PUT "https://api.example.com/resource" \
-     -u "username:password" \
-     -H "Content-Type: application/json" \
-     -d '{"key1": "value1", "key2": "value2"}'
+"Converting circular structure to JSON\n    --> starting at object with constructor 'ClientRequest'\n    |     property 'socket' -> object with constructor 'Socket'\n    --- property '_httpMessage' closes the circle"
