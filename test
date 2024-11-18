@@ -1,5 +1,36 @@
-const uniqueArray = mergedArray.filter((value, index, self) => 
-  index === self.findIndex((t) => (
-    t.user === value.user && t.role === value.role
-  ))
-);
+UI label: "Tasks / Widgets In Progress: 3, Paused: 0"
+Api: 
+https://iop-dev.nss.vzwnet.com:8080/rcmengine/switch/pathfinder/widget/banner/count?user_id=<user_id>
+response:
+
+{"WIP":"3","PAUSED":0}
+
+first api call from front end to below service 
+api : https://iop-dev.nss.vzwnet.com:8080/rcmengine/switch/pathfinder/widget/banner/count?user_id=<user_id>
+
+service name: rcmservice
+service repo : https://gitlab.verizon.com/INTEGRATEDOPSPORTA/rcmservice/
+second api call from backend rcmservice  to switch service
+based on the below condition(checking user type)
+
+
+if (role == 'SWITCH_MANAGER' || role == 'CELL_SWITCH_MANAGER') {
+          url = config.switchService.url + 'mgr/' + userId;
+        } else if (role == 'SWITCH_TECHNICIAN') {
+          url = config.switchService.url + 'tech/' + userId;
+        } else if (role == 'TRANSLATION_MANAGER' || role == 'TRANSLATION_ENGINEER') {
+          url = config.switchService.url + 'trans/' + userId;
+
+
+then switch service call the opstraker api based on env
+prod(
+
+"https://opstracker-api.eng.vzwcorp.com/c2/api/rest/getList.php")
+dev(
+"http://txslpmtkpa4v.nss.vzwnet.com/c2/api/rest/getList.php")
+
+
+
+
+
+rcm servicer call switch service then switch service call opstracker
