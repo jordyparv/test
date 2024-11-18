@@ -1,36 +1,26 @@
-UI label: "Tasks / Widgets In Progress: 3, Paused: 0"
-Api: 
-https://iop-dev.nss.vzwnet.com:8080/rcmengine/switch/pathfinder/widget/banner/count?user_id=<user_id>
-response:
+API Call Flow:
 
-{"WIP":"3","PAUSED":0}
+Frontend to rcmservice API:
+The frontend calls the API to get the number of tasks/widgets for a user.
+API:
+GET https://iop-dev.nss.vzwnet.com:8080/rcmengine/switch/pathfinder/widget/banner/count?user_id=<user_id>
+Response:
+{"WIP": "3", "PAUSED": 0}
 
-first api call from front end to below service 
-api : https://iop-dev.nss.vzwnet.com:8080/rcmengine/switch/pathfinder/widget/banner/count?user_id=<user_id>
+Backend (rcmservice) Calls switchService API:
+The backend (in rcmservice) checks the user's role and calls the switchService API based on the role.
 
-service name: rcmservice
-service repo : https://gitlab.verizon.com/INTEGRATEDOPSPORTA/rcmservice/
-second api call from backend rcmservice  to switch service
-based on the below condition(checking user type)
-
-
-if (role == 'SWITCH_MANAGER' || role == 'CELL_SWITCH_MANAGER') {
-          url = config.switchService.url + 'mgr/' + userId;
-        } else if (role == 'SWITCH_TECHNICIAN') {
-          url = config.switchService.url + 'tech/' + userId;
-        } else if (role == 'TRANSLATION_MANAGER' || role == 'TRANSLATION_ENGINEER') {
-          url = config.switchService.url + 'trans/' + userId;
-
-
-then switch service call the opstraker api based on env
-prod(
-
-"https://opstracker-api.eng.vzwcorp.com/c2/api/rest/getList.php")
-dev(
-"http://txslpmtkpa4v.nss.vzwnet.com/c2/api/rest/getList.php")
-
-
-
-
-
-rcm servicer call switch service then switch service call opstracker
+For SWITCH_MANAGER or CELL_SWITCH_MANAGER, it calls:
+GET <switchService URL>/mgr/<user_id>
+For SWITCH_TECHNICIAN, it calls:
+GET <switchService URL>/tech/<user_id>
+For TRANSLATION_MANAGER or TRANSLATION_ENGINEER, it calls:
+GET <switchService URL>/trans/<user_id>
+switchService Calls the Opstracker API:
+Based on the environment, switchService makes a call to the Opstracker API.
+In Production:
+GET https://opstracker-api.eng.vzwcorp.com/c2/api/rest/getList.php
+In Development:
+GET http://txslpmtkpa4v.nss.vzwnet.com/c2/api/rest/getList.php
+Response Back to Frontend:
+The data from the Opstracker API is processed by switchService and sent back to the frontend for display.
