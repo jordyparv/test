@@ -1,40 +1,72 @@
-ORA-00904: "RNUM": invalid identifier
-00904. 00000 -  "%s: invalid identifier"
-*Cause:    
-*Action:
-Error at Line: 167 Column: 12
-
-with aggregatedNames as(
-      select
-      odsc.SWITCH_UNIVERSALID,
-      listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}' ,',') within group (order by odsc.fname,odsc.lname) as tech_details
-      from ops_data_switch_contacts  odsc
-      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
-      where odsc.cfd_role = 'SWITCH_TECH'
-      GROUP BY odsc.SWITCH_UNIVERSALID),
-
-filterOPSE as (select distinct sie.location_id from switch_elements odse 
-    join switch_installed_elements sie on sie.ELEMENT_ID = odse.ELEMENT_ID
-      where ((:element_div is null or lower(odse.ELEMENT_DIVISION) like lower(:element_div)) AND
-            (:element_dept is null or lower(odse.ELEMENT_DEPT) like lower(:element_dept)) AND
-            (:element_sub_dept is null or lower(odse.ELEMENT_SUB_DEPT) like lower(:element_sub_dept))) AND
-            (:startDate is null or :endDate is null or sie.start_date >= :startDate AND
-              sie.end_date <= :endDate))
-            
-      select rownum as rnum,ods2.* from (select ods.name,ods.SWITCH_UNID, ods.sub_market as market,ods.region as sub_market, ods.tech_details, ods.address, ods.total_count,ods.NAME as switch_name,ods.XING_ID AS CND_ID,ods.V_ZONE_NAME AS CALLOUT_ZONE,ods.SWITCH_EMIS_ID AS FUZE_ID 
-      from
-      (select distinct ods.SWITCH_UNID,ODS.META_CREATEDDATE, ods.market,ods.sub_market,ods.region,ods.address || ', ' || ods.city || ' ' || ods.st || ' ' || ods.zip as "ADDRESS",ods.city,ods.st,ods.zip,ods.NAME,ods.XING_ID,ods.V_ZONE_NAME,ods.SWITCH_EMIS_ID , ag.tech_details,count(*) over() as total_count from aggregatedNames ag
-    right join ops_data_switch ods
-      on ag.SWITCH_UNIVERSALID = ods.switch_unid
-     join filterOPSE sie on sie.location_id = ods.locationid 
-      where
-      (:area is null or lower(ods.market) = lower(:area)) AND
-      (:name is null or lower(ods.NAME) like lower(:name)) AND
-      (:switch_code is null or lower(ods.switch_code) like lower(:switch_code)) AND
-      (:market is null or lower(ods.SUB_MARKET)=lower(:market)) AND
-      (:sub_market is null or lower(ods.REGION)=lower(:sub_market)) AND
-      (:vsm_name is null or lower(ods.vsm_switch) like lower(:vsm_name))
-      ) ods
-      order by ods.name
-      ) ods2
-     where rnum between :startRow and :endRow;
+WITH aggregatedNames AS (
+  SELECT
+    odsc.SWITCH_UNIVERSALID,
+    listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","cfd_role":"'|| odsc.CFD_ROLE || '","userid":"' || odsc.USERID || '"}', ',') 
+    WITHIN GROUP (ORDER BY odsc.fname, odsc.lname) AS tech_details
+  FROM ops_data_switch_contacts odsc
+  RIGHT JOIN SEC_CONTACT sc ON (odsc.userid = sc.login_id)
+  WHERE odsc.cfd_role = 'SWITCH_TECH'
+  GROUP BY odsc.SWITCH_UNIVERSALID
+),
+filterOPSE AS (
+  SELECT DISTINCT sie.location_id
+  FROM switch_elements odse
+  JOIN switch_installed_elements sie ON sie.ELEMENT_ID = odse.ELEMENT_ID
+  WHERE (
+    (:element_div IS NULL OR LOWER(odse.ELEMENT_DIVISION) LIKE LOWER(:element_div)) AND
+    (:element_dept IS NULL OR LOWER(odse.ELEMENT_DEPT) LIKE LOWER(:element_dept)) AND
+    (:element_sub_dept IS NULL OR LOWER(odse.ELEMENT_SUB_DEPT) LIKE LOWER(:element_sub_dept))
+  ) AND (
+    :startDate IS NULL OR :endDate IS NULL OR sie.start_date >= :startDate AND sie.end_date <= :endDate
+  )
+)
+SELECT * 
+FROM (
+  SELECT 
+    rownum AS rnum, 
+    ods2.* 
+  FROM (
+    SELECT 
+      ods.name,
+      ods.SWITCH_UNID, 
+      ods.sub_market AS market,
+      ods.region AS sub_market, 
+      ods.tech_details, 
+      ods.address, 
+      ods.total_count,
+      ods.NAME AS switch_name,
+      ods.XING_ID AS CND_ID,
+      ods.V_ZONE_NAME AS CALLOUT_ZONE,
+      ods.SWITCH_EMIS_ID AS FUZE_ID
+    FROM (
+      SELECT DISTINCT
+        ods.SWITCH_UNID,
+        ODS.META_CREATEDDATE,
+        ods.market,
+        ods.sub_market,
+        ods.region,
+        ods.address || ', ' || ods.city || ' ' || ods.st || ' ' || ods.zip AS "ADDRESS",
+        ods.city,
+        ods.st,
+        ods.zip,
+        ods.NAME,
+        ods.XING_ID,
+        ods.V_ZONE_NAME,
+        ods.SWITCH_EMIS_ID,
+        ag.tech_details,
+        COUNT(*) OVER() AS total_count
+      FROM aggregatedNames ag
+      RIGHT JOIN ops_data_switch ods ON ag.SWITCH_UNIVERSALID = ods.switch_unid
+      JOIN filterOPSE sie ON sie.location_id = ods.locationid
+      WHERE 
+        (:area IS NULL OR LOWER(ods.market) = LOWER(:area)) AND
+        (:name IS NULL OR LOWER(ods.NAME) LIKE LOWER(:name)) AND
+        (:switch_code IS NULL OR LOWER(ods.switch_code) LIKE LOWER(:switch_code)) AND
+        (:market IS NULL OR LOWER(ods.SUB_MARKET) = LOWER(:market)) AND
+        (:sub_market IS NULL OR LOWER(ods.REGION) = LOWER(:sub_market)) AND
+        (:vsm_name IS NULL OR LOWER(ods.vsm_switch) LIKE LOWER(:vsm_name))
+    ) ods
+    ORDER BY ods.name
+  ) ods2
+)
+WHERE rnum BETWEEN :startRow AND :endRow;
