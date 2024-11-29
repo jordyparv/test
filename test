@@ -1,32 +1,5 @@
- it('should call reverseSyncVendorAssignments when useReverseSync is true', async () => {
-    // Mocking the config value
-    jest.spyOn(config.reverseSync, 'useReverseSync', 'get').mockReturnValue(true); // Simulate the useReverseSync flag as true
-    
-    const req = mockRequest({switchUnid:"test1"},[{
-      source_id: "SOURCE_ID",
-      vendor_id: "VENDOR_ID",
-      pm_category: "",
-      user_id: "USER_ID",
-      vzw_vendor_assignment_id:'test1234'
-    }]);
-    const res = mockResponse();
-
-    // Mock the reverseSyncVendorAssignments function call (for both 'put' and 'post')
-    const reverseSyncVendorAssignmentsMock = jest.spyOn(service, 'reverseSyncVendorAssignments');
-    reverseSyncVendorAssignmentsMock.mockResolvedValue({ fields: { meta_universalid: { value: "someMetaId" } } });
-
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch']);
-    switchRepoMock.setSwitchPmVendorAssignment.mockResolvedValueOnce({ rowsAffected: 1 });
-
-    // Call the service method
-    await service.setSwitchPmVendorAssignment(req, res);
-
-    // Expect reverseSyncVendorAssignments to be called
-    expect(reverseSyncVendorAssignmentsMock).toHaveBeenCalledWith(expect.any(Object), expect.any(String), "post");
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.OK,
-      'Switch pm vendor assignment added/updated successfully!'
-    ));
-  });
+No overload matches this call.
+  Overload 1 of 4, '(object: SwitchService, method: FunctionPropertyNames<Required<SwitchService>>): SpyInstance<Promise<any> | ... 7 more ... | Promise<...>, [] | ... 28 more ... | [res: ...]>', gave the following error.
+    Argument of type '"reverseSyncVendorAssignments"' is not assignable to parameter of type 'FunctionPropertyNames<Required<SwitchService>>'.
+  Overload 2 of 4, '(object: SwitchService, method: never): SpyInstance<never, never>', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'never'.ts(2769
