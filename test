@@ -1,37 +1,7 @@
-not covered
-      if(config.reverseSync.useReverseSync) {
-          let data;
-          if(queryParams.vzw_vendor_assignment_id) {
-            //update ops reverse sync
-            data = await reverseSyncVendorAssignments(payload, queryParams.vzw_vendor_assignment_id, "put");
-          } 
-          else {
-            data = await reverseSyncVendorAssignments(payload, "", "post");
-          }
-          if(data?.fields?.meta_universalid) {
-            payload.META_UNIVERSAL_ID = data?.fields?.meta_universalid.value;
-          } else {
-            throw new Error(HttpStatus.INTERNAL_SERVER_ERROR, "Usert to ops failed", `Unable to update record in ops ${payload}`)
-          }
-        }
-        const data = await this.switchRepo.setSwitchPmVendorAssignment(payload);
-        Iif (data.rowsAffected === 0) {
-          return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(ApiResponseObject(
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            "Something went wrong! Unable to add the association"
-          ));
-        }
-      }
-  
-        return res.status(HttpStatus.OK).json(ApiResponseObject(
-        HttpStatus.OK,
-        'Switch pm vendor assignment added successfully!'
-      ));
-
-
-test cases
-describe('setSwitchPmVendorAssignment', () => {
-  it('should set switch Pm Vendor Assignment data successfully', async () => {
+ it('should call reverseSyncVendorAssignments when useReverseSync is true', async () => {
+    // Mocking the config value
+    jest.spyOn(config.reverseSync, 'useReverseSync', 'get').mockReturnValue(true); // Simulate the useReverseSync flag as true
+    
     const req = mockRequest({switchUnid:"test1"},[{
       source_id: "SOURCE_ID",
       vendor_id: "VENDOR_ID",
@@ -40,9 +10,19 @@ describe('setSwitchPmVendorAssignment', () => {
       vzw_vendor_assignment_id:'test1234'
     }]);
     const res = mockResponse();
+
+    // Mock the reverseSyncVendorAssignments function call (for both 'put' and 'post')
+    const reverseSyncVendorAssignmentsMock = jest.spyOn(service, 'reverseSyncVendorAssignments');
+    reverseSyncVendorAssignmentsMock.mockResolvedValue({ fields: { meta_universalid: { value: "someMetaId" } } });
+
     switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch']);
-    switchRepoMock.setSwitchPmVendorAssignment.mockResolvedValueOnce({ rowsAffected:1});
+    switchRepoMock.setSwitchPmVendorAssignment.mockResolvedValueOnce({ rowsAffected: 1 });
+
+    // Call the service method
     await service.setSwitchPmVendorAssignment(req, res);
+
+    // Expect reverseSyncVendorAssignments to be called
+    expect(reverseSyncVendorAssignmentsMock).toHaveBeenCalledWith(expect.any(Object), expect.any(String), "post");
 
     expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
     expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
@@ -50,166 +30,3 @@ describe('setSwitchPmVendorAssignment', () => {
       'Switch pm vendor assignment added/updated successfully!'
     ));
   });
-  it('should set switch Pm Vendor Assignment with reverseSync data successfully', async () => {
-    const req = mockRequest({switchUnid:"test1"},[{
-      source_id: "SOURCE_ID",
-      vendor_id: "VENDOR_ID",
-      pm_category: "",
-      user_id: "USER_ID",
-      vzw_vendor_assignment_id:'test1234'
-    }]);
-    const res = mockResponse();
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch']);
-       
-    
-    switchRepoMock.setSwitchPmVendorAssignment.mockResolvedValueOnce({ rowsAffected:1});
-    await service.setSwitchPmVendorAssignment(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.OK);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.OK,
-      'Switch pm vendor assignment added/updated successfully!'
-    ));
-  });
-  it('should return not found if switch unid not exist', async () => {
-    const req = mockRequest({ switchUnid: 'test-switch-2' });
-    const res = mockResponse();
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(null);
-    await service.setSwitchPmVendorAssignment(req, res);
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.NOT_FOUND,
-      "Switch unid does not exist!",
-    ));
-  });
-  it('should not set switch Pm Vendor Assignment data if req body is missing', async () => {
-    const req = mockRequest({switchUnid:'test-switch-2'},{});
-    const res = mockResponse();
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch-2']);
-    await service.setSwitchPmVendorAssignment(req, res);
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.BAD_REQUEST,
-      "Payload not found in the request body!"
-    ));
-  });
-  it('should return bad request if required data not provided to add switch Pm Vendor Assignment', async () => {
-    const req = mockRequest({switchUnid:"test1"},[{
-      source_id: "SOURCE_ID",
-      vendor_id: "VENDOR_ID",
-    }]);
-    const res = mockResponse();
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce(['test-switch']);
-    await service.setSwitchPmVendorAssignment(req, res);
-  
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.BAD_REQUEST,
-      "Please provide all required fields in the request body!"
-    ));
-  });
-  it('should handle if db unable to set switch Pm Vendor Assignment data', async () => {
-    const req = mockRequest({switchUnid:"test1"},[{
-      source_id: "SOURCE_ID",
-      vendor_id: "VENDOR_ID",
-      pm_category: "",
-      user_id: "USER_ID",
-      vzw_vendor_assignment_id:'test1234'
-    }]);
-    const res = mockResponse();
-    switchRepoMock.checkSwitchUnidInTable.mockResolvedValueOnce([{key:1}]);
-    switchRepoMock.setSwitchPmVendorAssignment.mockResolvedValueOnce({ rowsAffected:0});
-    await service.setSwitchPmVendorAssignment(req, res);
-  
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.INTERNAL_SERVER_ERROR,
-      "Something went wrong! Unable to add the association"
-    ));
-
-  });
-
-  it('should handle unexpected error switch assignment', async () => {
-    const req = mockRequest({ switchUnid: 'test-switch-2' });
-    const res = mockResponse();
-
-    switchRepoMock.checkSwitchUnidInTable.mockImplementation(()=>{
-      throw new Error("Unexpected error")
-    });      
-    await service.setSwitchPmVendorAssignment(req, res);
-    expect(res.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-    expect(res.json).toHaveBeenCalledWith(ApiResponseObject(
-      HttpStatus.INTERNAL_SERVER_ERROR,
-      "Something went wrong! Try again later."))
-    });
-})  
-
-reverse sync functions
-
-
-const reverseSyncOps = async (metaId, payloadObject, type, recordtype) => {
-  try {
-    if(!config.reverseSync.syncInstalledElements) return;
-    const url = config.reverseSync.reverseSyncUrl;
-    const method = type;
-    const params = {
-      recordtype,
-    };
-    const data = {
-      data: { ...payloadObject }
-    };
-    let args = {
-      url,
-      method,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': config.app.authHeader,
-        'Content-Type': 'application/json',
-      },
-    };
-
-    if(["put", "delete"].includes(type)) params["meta_universalid"] =  metaId;
-    
-    if(["put", "post"].includes(type)) args["data"] = data;
-
-    args["params"] = params;
-
-    const response = await axios(args);
-    logger.log("Upsert Successfull", response.data)
-    
-    return { message: "Upsert Successful", ...response.data };
-  }
-  catch(ex) {
-    //dev purpose only
-    if(config?.reverseSync?.supressError && recordtype === "C2VendorAssignment") {
-      logger.log(`Unable to perform reverse sync to opstracker`, ex);
-      return { 
-        fields: {
-          meta_universalid : {
-            value: metaId || ""
-          }
-        }
-      }
-    }
-    logger.error("Unable to perform reverseSync to ops", ex);
-    throw ex;
-  }
-}
-
-
-async function reverseSyncVendorAssignments(payload, metaId, type) {
-  try {
-    let payloadObject = {
-      "SOURCE_TYPE": payload?.SOURCE_TYPE,
-      "SOURCE_ID": payload?.SOURCE_ID,
-      "PM_CATEGORY": payload?.PM_CATEGORY,
-      "VENDOR_ID": payload?.VENDOR_ID
-    }
-
-    return await reverseSyncOps(metaId, payloadObject, type, "C2VendorAssignment");
-  }
-  catch(err) {
-    logger.log("switch Vendor Assignments reverse sync to ops failed", err)
-    throw err;
-  }
-}
