@@ -1,5 +1,1 @@
-No overload matches this call.
-  Overload 1 of 4, '(object: SwitchService, method: FunctionPropertyNames<Required<SwitchService>>): SpyInstance<Promise<any> | ... 7 more ... | Promise<...>, [] | ... 28 more ... | [res: ...]>', gave the following error.
-    Argument of type '"reverseSyncVendorAssignments"' is not assignable to parameter of type 'FunctionPropertyNames<Required<SwitchService>>'.
-  Overload 2 of 4, '(object: SwitchService, method: never): SpyInstance<never, never>', gave the following error.
-    Argument of type 'string' is not assignable to parameter of type 'never'.ts(2769
+
