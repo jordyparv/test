@@ -1,1 +1,10 @@
+This collection of APIs provides various endpoints for managing different resources:
+
+- **Switch API**: Handles basic operations for switches, including retrieving (GET) and updating (PUT) switch settings.
+- **Contact API**: Manages contact information with options to retrieve (GET), create (POST), and delete (DELETE) contact entries.
+- **PM Control API**: Allows for controlling PM (Power Management) settings, with endpoints for viewing (GET) and updating (PUT) configurations.
+- **Vendor Assignment API**: Handles vendor-related tasks, including assigning vendors (POST), retrieving vendor data (GET), and removing vendor assignments (DELETE).
+- **Installed Element API**: Manages elements that are installed in the system, with endpoints to view (GET) and add (POST) new elements.
+- **Advanced Search API**: Provides powerful search functionality with a GET endpoint to query and retrieve specific data based on advanced criteria.
+- **File Attachment API**: Manages file attachments with endpoints for retrieving (GET), uploading (POST), and deleting (DELETE) files associated with resources.
 
