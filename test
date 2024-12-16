@@ -1,23 +1,16 @@
 BEGIN
-   -- Insert data into table1 from another source
-   INSERT INTO table1 (column1, column2)
-   SELECT column1, column2
-   FROM another_table
-   WHERE condition;
+   
+   INSERT INTO DIRECTIVE_GROUP (GROUP_ID, GROUP_NAME) 
+   VALUES((select MAX(GROUP_ID) + 1 from DIRECTIVE_GROUP), :GROUP_NAME);
 
-   -- Insert data into table2 based on another query
-   INSERT INTO table2 (column1, column2)
-   SELECT column1, column2
-   FROM another_table
-   WHERE condition;
-
-   -- Insert data into table3 based on another query
-   INSERT INTO table3 (column1, column2)
-   SELECT column1, column2
-   FROM another_table
-   WHERE condition;
-
-   COMMIT;
+   
+   INSERT INTO DIRECTIVE_USER_GROUP_MAPPING (MAPPING_ID, USER_ID,GROUP_ID) 
+   VALUES((select MAX(MAPPING_ID) + 1 from DIRECTIVE_USER_GROUP_MAPPING), 
+   :USER_ID,
+   (select GROUP_ID from DIRECTIVE_GROUP WHERE GROUP_NAME =:GROUP_NAME));
+   
+   INSERT INTO DIRECTIVE_ELEMENT_GROUP_MAPPING (ELEMENT_MAPPING_ID, GROUP_ID,ELEMENT_ID)
+    VALUES((select MAX(ELEMENT_MAPPING_ID) + 1 from DIRECTIVE_ELEMENT_GROUP_MAPPING), 
+   (select GROUP_ID from DIRECTIVE_GROUP WHERE GROUP_NAME =:GROUP_NAME),
+  :ELEMENT_ID);
 END;
-/
-
