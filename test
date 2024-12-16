@@ -1,1 +1,23 @@
+BEGIN
+   -- Insert data into table1 from another source
+   INSERT INTO table1 (column1, column2)
+   SELECT column1, column2
+   FROM another_table
+   WHERE condition;
+
+   -- Insert data into table2 based on another query
+   INSERT INTO table2 (column1, column2)
+   SELECT column1, column2
+   FROM another_table
+   WHERE condition;
+
+   -- Insert data into table3 based on another query
+   INSERT INTO table3 (column1, column2)
+   SELECT column1, column2
+   FROM another_table
+   WHERE condition;
+
+   COMMIT;
+END;
+/
 
