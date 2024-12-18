@@ -1,112 +1,37 @@
-npm install @nestjs/typeorm typeorm oracledb
-
-
-db
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { YourEntity } from './your-entity.entity'; // import your entities here
-
-@Module({
-  imports: [
-    TypeOrmModule.forRoot({
-      type: 'oracle',  // Specify that you are using Oracle
-      host: 'your_oracle_host',  // e.g., 'localhost' or Oracle Cloud host
-      port: 1521,  // Default Oracle port (this might vary)
-      username: 'your_username',  // Oracle DB username
-      password: 'your_password',  // Oracle DB password
-      sid: 'your_oracle_sid',  // Oracle SID or service name
-      connectString: 'your_connection_string', // Optional (used if you have a TNS or full connection string)
-      entities: [YourEntity], // List of entities to be used in TypeORM
-      synchronize: true, // Set to true if you want TypeORM to automatically create DB schema on startup
-      logging: true, // Optional - helps to log queries
-    }),
-  ],
-})
-export class AppModule {}
-
-ent
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-
-@Entity('your_table_name') // Specify the table name here
-export class YourEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  name: string;
-
-  @Column()
-  description: string;
-}
-
-service
+ ERROR [ExceptionHandler] Nest can't resolve dependencies of the SwitchDirectiveService (?). Please make sure that the argument "DirectiveUserGroupMappingEntityRepository" at index [0] is available in the SwitchDirectiveModule context.
+service file
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DirectiveUserGroupMappingEntity } from 'src/entities/DirectiveUserGroupMappingEntity';
 import { Repository } from 'typeorm';
-import { YourEntity } from './your-entity.entity';
+
 
 @Injectable()
-export class YourService {
+export class SwitchDirectiveService {
   constructor(
-    @InjectRepository(YourEntity)
-    private yourRepository: Repository<YourEntity>,
+    @InjectRepository(DirectiveUserGroupMappingEntity)
+    private DirectiveUserGroupMappingEntityRepository: Repository<DirectiveUserGroupMappingEntity>,
   ) {}
 
-  async findAll(): Promise<YourEntity[]> {
-    return this.yourRepository.find();
+  async findAll(): Promise<DirectiveUserGroupMappingEntity[]> {
+    return this.DirectiveUserGroupMappingEntityRepository.find();
   }
 
-  async findOne(id: number): Promise<YourEntity> {
-    return this.yourRepository.findOne(id);
+//   async findOne(user_id: number): Promise<DirectiveUserGroupMappingEntity> {
+//     return this.DirectiveUserGroupMappingEntityRepository.findOne(user_id);
+//   }
+
+  async create(data: Partial<DirectiveUserGroupMappingEntity>): Promise<DirectiveUserGroupMappingEntity> {
+    const entity = this.DirectiveUserGroupMappingEntityRepository.create(data);
+    return this.DirectiveUserGroupMappingEntityRepository.save(entity);
   }
 
-  async create(data: Partial<YourEntity>): Promise<YourEntity> {
-    const entity = this.yourRepository.create(data);
-    return this.yourRepository.save(entity);
-  }
-
-  async update(id: number, data: Partial<YourEntity>): Promise<YourEntity> {
-    await this.yourRepository.update(id, data);
-    return this.yourRepository.findOne(id);
-  }
+//   async update(id: number, data: Partial<DirectiveUserGroupMappingEntity>): Promise<DirectiveUserGroupMappingEntity> {
+//     await this.DirectiveUserGroupMappingEntityRepository.update(id, data);
+//     return this.DirectiveUserGroupMappingEntityRepository.findOne(id);
+//   }
 
   async delete(id: number): Promise<void> {
-    await this.yourRepository.delete(id);
+    await this.DirectiveUserGroupMappingEntityRepository.delete(id);
   }
 }
-controller
-import { Controller, Get, Param, Post, Body, Put, Delete } from '@nestjs/common';
-import { YourService } from './your.service';
-import { YourEntity } from './your-entity.entity';
-
-@Controller('your-entity')
-export class YourController {
-  constructor(private readonly yourService: YourService) {}
-
-  @Get()
-  async findAll(): Promise<YourEntity[]> {
-    return this.yourService.findAll();
-  }
-
-  @Get(':id')
-  async findOne(@Param('id') id: number): Promise<YourEntity> {
-    return this.yourService.findOne(id);
-  }
-
-  @Post()
-  async create(@Body() data: Partial<YourEntity>): Promise<YourEntity> {
-    return this.yourService.create(data);
-  }
-
-  @Put(':id')
-  async update(@Param('id') id: number, @Body() data: Partial<YourEntity>): Promise<YourEntity> {
-    return this.yourService.update(id, data);
-  }
-
-  @Delete(':id')
-  async remove(@Param('id') id: number): Promise<void> {
-    return this.yourService.delete(id);
-  }
-}
-
-
