@@ -17,3 +17,13 @@ export class DbHealthCheckService implements OnModuleInit {
     }
   }
 }
+
+import { Module } from '@nestjs/common';
+import { DbHealthCheckService } from './db-health-check.service';
+import { OracleDbModule } from './oracleModule';  // Import your Oracle DB configuration module
+
+@Module({
+  imports: [OracleDbModule],  // Import Oracle DB module to establish connection
+  providers: [DbHealthCheckService],  // Add health check service
+})
+export class DbModule {}
