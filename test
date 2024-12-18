@@ -1,37 +1,32 @@
- ERROR [ExceptionHandler] Nest can't resolve dependencies of the SwitchDirectiveService (?). Please make sure that the argument "DirectiveUserGroupMappingEntityRepository" at index [0] is available in the SwitchDirectiveModule context.
-service file
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+file oracleModule.ts
+
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DirectiveUserGroupMappingEntity } from 'src/entities/DirectiveUserGroupMappingEntity';
-import { Repository } from 'typeorm';
+ // import your entities here
+import * as oracledb from "oracledb";
+let config = require("config");
+let fs = require("fs");
+let dbConfig = JSON?.parse(
+  fs?.readFileSync(config?.iopdbConfig?.filePath, "utf8")
+).db[0];
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'oracle',  // Specify that you are using Oracle
+      host: dbConfig.host,  // e.g., 'localhost' or Oracle Cloud host
+      port: dbConfig.port,  // Default Oracle port (this might vary)
+      username: dbConfig.user,  // Oracle DB username
+      password: dbConfig.password,  // Oracle DB password
+      sid: dbConfig.dbName,  // Oracle SID or service name
+      connectString: dbConfig.rac_string, // Optional (used if you have a TNS or full connection string)
+      entities: [DirectiveUserGroupMappingEntity], // List of entities to be used in TypeORM
+      synchronize: false, // Set to true if you want TypeORM to automatically create DB schema on startup
+      logging: true, // Optional - helps to log queries
+    }),
+  ],
+})
+export class oracleDbModule {}
 
 
-@Injectable()
-export class SwitchDirectiveService {
-  constructor(
-    @InjectRepository(DirectiveUserGroupMappingEntity)
-    private DirectiveUserGroupMappingEntityRepository: Repository<DirectiveUserGroupMappingEntity>,
-  ) {}
-
-  async findAll(): Promise<DirectiveUserGroupMappingEntity[]> {
-    return this.DirectiveUserGroupMappingEntityRepository.find();
-  }
-
-//   async findOne(user_id: number): Promise<DirectiveUserGroupMappingEntity> {
-//     return this.DirectiveUserGroupMappingEntityRepository.findOne(user_id);
-//   }
-
-  async create(data: Partial<DirectiveUserGroupMappingEntity>): Promise<DirectiveUserGroupMappingEntity> {
-    const entity = this.DirectiveUserGroupMappingEntityRepository.create(data);
-    return this.DirectiveUserGroupMappingEntityRepository.save(entity);
-  }
-
-//   async update(id: number, data: Partial<DirectiveUserGroupMappingEntity>): Promise<DirectiveUserGroupMappingEntity> {
-//     await this.DirectiveUserGroupMappingEntityRepository.update(id, data);
-//     return this.DirectiveUserGroupMappingEntityRepository.findOne(id);
-//   }
-
-  async delete(id: number): Promise<void> {
-    await this.DirectiveUserGroupMappingEntityRepository.delete(id);
-  }
-}
