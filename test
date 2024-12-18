@@ -1,18 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { DirectiveGroupEntity } from './DirectiveGroupEntity';
-import { SecContactEntity } from './SecContactEntity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
 
-@Entity('DIRECTIVE_USER_GROUP_MAPPING')
+@Entity('DIRECTIVE_USER_GROUP_MAPPING') // Specify the table name here
 export class DirectiveUserGroupMappingEntity {
   @PrimaryGeneratedColumn()
   MAPPING_ID: number;
-
   @Column()
   GROUP_ID: number;
-
   @Column()
   USER_ID: string;
-
   @ManyToOne(() => DirectiveGroupEntity, (group) => group.userGroupMappings)
   group: DirectiveGroupEntity;
 
@@ -24,10 +19,8 @@ export class DirectiveUserGroupMappingEntity {
 export class DirectiveGroupEntity {
   @PrimaryGeneratedColumn()
   GROUP_ID: number;
-
   @Column()
   GROUP_NAME: string;
-
   @OneToMany(() => DirectiveUserGroupMappingEntity, (mapping) => mapping.group)
   userGroupMappings: DirectiveUserGroupMappingEntity[];
 
@@ -39,31 +32,41 @@ export class DirectiveGroupEntity {
 export class SwitchElementEntity {
   @PrimaryGeneratedColumn()
   ELEMENT_ID: number;
-
   @Column()
   DESCRIPTION: string;
-
   @Column()
   ELEMENT_DIVISION: string;
-
   @Column()
   ELEMENT_DEPT: string;
-
+  @Column()
+  ELEMENT_SUB_DEPT: string;
+  @Column()
+  IS_DISABLED: string;
+  @Column()
+  META_UNIVERSAL_ID: string;
+  @Column()
+  META_CREATED_DATE: Date;
+  @Column()
+  META_CREATED_BY: string;
+  @Column()
+  META_LAST_UPDATED_DATE: Date;
+  @Column()
+  META_LAST_UPDATED_BY: string;
+  @Column()
+  NO_DIRTRACKER: number;
+  @Column()
+  VENDOR: string;
   @OneToMany(() => DirectiveElementGroupMappingEntity, (mapping) => mapping.element)
   elementGroupMappings: DirectiveElementGroupMappingEntity[];
 }
-
 @Entity('DIRECTIVE_ELEMENT_GROUP_MAPPING')
 export class DirectiveElementGroupMappingEntity {
   @PrimaryGeneratedColumn()
   ELEMENT_MAPPING_ID: number;
-
   @Column()
   GROUP_ID: number;
-
   @Column()
   ELEMENT_ID: number;
-
   @ManyToOne(() => DirectiveGroupEntity, (group) => group.elementGroupMappings)
   group: DirectiveGroupEntity;
 
@@ -71,45 +74,57 @@ export class DirectiveElementGroupMappingEntity {
   element: SwitchElementEntity;
 }
 
-ntity('SEC_CONTACT')
+@Entity('SEC_CONTACT')
 export class SecContactEntity {
   @PrimaryGeneratedColumn()
   CONTACT_ID: number;
-
   @Column()
   LOGIN_ID: string;
-
+  @Column()
+  ENTERPRISE_ID: string;
+  @Column()
+  EMPLOYEE_ID: number;
   @Column()
   FIRSTNAME: string;
-
   @Column()
   LASTNAME: string;
-
+  @Column()
+  PHONE: string;
+  @Column()
+  EMAIL: string;
+  @Column()
+  TITLE: string;
+  @Column()
+  ROLE: string;
+  @Column()
+  MANAGER_ID: string;
+  @Column()
+  DIRECTOR_ID: string;
+  @Column()
+  MARKET_ID: string;
+  @Column()
+  MARKET: string;
+  @Column()
+  SUBMARKET: string
+  @Column()
+  START_DATE: Date;
+  @Column()
+  END_DATE: Date;
+  @Column()
+  CREATED_DATE: Date;
+  @Column()
+  MODIFIED_DATE: Date;
+  @Column()
+  NO_LDAP_OVERRIDE: number;
+  @Column()
+  IS_BETA_USER: number;
+  @Column()
+  ALT_PHONE: string;
   @OneToMany(() => DirectiveUserGroupMappingEntity, (mapping) => mapping.user)
   userGroupMappings: DirectiveUserGroupMappingEntity[];
 }
-
-const directiveGroupRepository = getRepository(DirectiveGroupEntity);
-
-
+ group: DirectiveGroupEntity;
+         ^
 
 
-const results = await directiveGroupRepository
-  .createQueryBuilder('gr')
-  .leftJoinAndSelect('gr.elementGroupMappings', 'egm')
-  .leftJoinAndSelect('egm.element', 'sele')
-  .leftJoinAndSelect('gr.userGroupMappings', 'ugm')
-  .leftJoinAndSelect('ugm.user', 'sc')
-  .select([
-    'gr.GROUP_NAME',
-    'sele.ELEMENT_DIVISION',
-    'sele.ELEMENT_DEPT',
-    "CONCAT(sc.LASTNAME, ', ', sc.FIRSTNAME) AS Assigned_To"
-  ])
-  .groupBy('gr.GROUP_NAME')
-  .addGroupBy('sele.ELEMENT_DIVISION')
-  .addGroupBy('sele.ELEMENT_DEPT')
-  .addGroupBy('sc.LASTNAME, sc.FIRSTNAME')
-  .getRawMany();
-
-console.log(results);
+ReferenceError: Cannot access 'DirectiveGroupEntity' before initialization
