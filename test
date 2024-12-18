@@ -1,1 +1,114 @@
-typeorm-model-generator -h localhost -d oracledb -u myuser -x mypassword -e oracle -p 1521 -s MYSCHEMA -o ./src/entities
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+@Entity('DIRECTIVE_USER_GROUP_MAPPING') // Specify the table name here
+export class DirectiveUserGroupMappingEntity {
+  @PrimaryGeneratedColumn()
+  MAPPING_ID: number;
+  @Column()
+  GROUP_ID: number;
+  @Column()
+  USER_ID: string;
+}
+
+@Entity('DIRECTIVE_GROUP')
+export class DirectiveGroupEntity {
+  @PrimaryGeneratedColumn()
+  GROUP_ID: number;
+  @Column()
+  GROUP_NAME: string;
+}
+
+@Entity('SWITCH_ELEMENTS')
+export class SwitchElementEntity {
+  @PrimaryGeneratedColumn()
+  ELEMENT_ID: number;
+  @Column()
+  DESCRIPTION: string;
+  @Column()
+  ELEMENT_DIVISION: string;
+  @Column()
+  ELEMENT_DEPT: string;
+  @Column()
+  ELEMENT_SUB_DEPT: string;
+  @Column()
+  IS_DISABLED: string;
+  @Column()
+  META_UNIVERSAL_ID: string;
+  @Column()
+  META_CREATED_DATE: Date;
+  @Column()
+  META_CREATED_BY: string;
+  @Column()
+  META_LAST_UPDATED_DATE: Date;
+  @Column()
+  META_LAST_UPDATED_BY: string;
+  @Column()
+  NO_DIRTRACKER: number;
+  @Column()
+  VENDOR: string;
+}
+@Entity('DIRECTIVE_ELEMENT_GROUP_MAPPING')
+export class DirectiveElementGroupMappingEntity {
+  @PrimaryGeneratedColumn()
+  ELEMENT_MAPPING_ID: number;
+  @Column()
+  GROUP_ID: number;
+  @Column()
+  ELEMENT_ID: number;
+}
+
+@Entity('SEC_CONTACT')
+export class SecContactEntity {
+  @PrimaryGeneratedColumn()
+  CONTACT_ID: number;
+  @Column()
+  LOGIN_ID: string;
+  @Column()
+  ENTERPRISE_ID: string;
+  @Column()
+  EMPLOYEE_ID: number;
+  @Column()
+  FIRSTNAME: string;
+  @Column()
+  LASTNAME: string;
+  @Column()
+  PHONE: string;
+  @Column()
+  EMAIL: string;
+  @Column()
+  TITLE: string;
+  @Column()
+  ROLE: string;
+  @Column()
+  MANAGER_ID: string;
+  @Column()
+  DIRECTOR_ID: string;
+  @Column()
+  MARKET_ID: string;
+  @Column()
+  MARKET: string;
+  @Column()
+  SUBMARKET: string
+  @Column()
+  START_DATE: Date;
+  @Column()
+  END_DATE: Date;
+  @Column()
+  CREATED_DATE: Date;
+  @Column()
+  MODIFIED_DATE: Date;
+  @Column()
+  NO_LDAP_OVERRIDE: number;
+  @Column()
+  IS_BETA_USER: number;
+  @Column()
+  ALT_PHONE: string;
+}
+
+
+select gr.GROUP_NAME, sele.ELEMENT_DIVISION as "Element_Division",  sele.ELEMENT_DEPT AS "Element_Dept", sc.Lastname || ', ' || sc.firstName AS "Assigned_To"  from DIRECTIVE_GROUP gr
+                      join DIRECTIVE_ELEMENT_GROUP_MAPPING egm on egm.GROUP_ID = gr.GROUP_ID
+                      join switch_elements sele on sele.ELEMENT_ID = egm.ELEMENT_ID
+                      join DIRECTIVE_USER_GROUP_MAPPING ugm on  ugm.GROUP_ID = egm.GROUP_ID
+                      join sec_contact sc on sc.LOGIN_ID = ugm.USER_ID
+                      group by gr.GROUP_NAME, sele.ELEMENT_DIVISION ,  sele.ELEMENT_DEPT, sc.Lastname || ', ' || sc.firstName
