@@ -1,15 +1,24 @@
- exceptionFactory: (errors) => {
-        // Customize error format here (e.g., array of errors with detailed messages)
-        const messages = errors.map(err => {
-          const constraints = Object.values(err.constraints).join(', ');
-          return `${err.property} has wrong value ${err.value}, ${constraints}`;
-        });
-        return new Error(messages.join(', '));
-      }
+import { ExceptionFilter, Catch, ArgumentsHost, BadRequestException } from '@nestjs/common';
+import { Request, Response } from 'express';
 
+@Catch(BadRequestException)
+export class ValidationExceptionFilter implements ExceptionFilter {
+  catch(exception: BadRequestException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
+    // Extract the error details from the exception
+    const responseMessage = {
+      statusCode: exception.getStatus(),
+      message: exception.message,
+      error: 'Bad Request',
+    };
 
-  // Validate the body manually if needed
-    if (!createGroupDto.group_name || !createGroupDto.assigned_mgr || !createGroupDto.elements.length) {
-      throw new BadRequestException('Group Name, Assigned Manager, and Elements are required!');
-    }
+    // Log the error
+    console.error('Validation Error: ', exception.message);
+
+    // Return the custom error response
+    response.status(exception.getStatus()).json(responseMessage);
+  }
+}
