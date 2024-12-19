@@ -22,3 +22,15 @@ export class ValidationExceptionFilter implements ExceptionFilter {
     response.status(exception.getStatus()).json(responseMessage);
   }
 }
+
+ // Use the global exception filter
+  app.useGlobalFilters(new ValidationExceptionFilter());
+
+  // Use global pipes to handle validation errors
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
