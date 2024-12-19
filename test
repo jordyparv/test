@@ -1,5 +1,8 @@
  exceptionFactory: (errors) => {
-        // You can customize how errors are formatted here
-        const messages = errors.map(err => `${err.property} has wrong value ${err.value}, ${Object.values(err.constraints).join(', ')}`).join(', ');
-        return new Error(messages);
-      },
+        // Customize error format here (e.g., array of errors with detailed messages)
+        const messages = errors.map(err => {
+          const constraints = Object.values(err.constraints).join(', ');
+          return `${err.property} has wrong value ${err.value}, ${constraints}`;
+        });
+        return new Error(messages.join(', '));
+      }
