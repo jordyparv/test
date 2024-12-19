@@ -1,10 +1,5 @@
-new ValidationPipe({
-      whitelist: true, // Strip properties that are not in the DTO
-      forbidNonWhitelisted: true, // Reject requests with properties not in the DTO
-      transform: true, // Transform payloads to DTO types (like arrays, etc.)
-      skipMissingProperties: false, // Ensure missing properties trigger validation error
-    })
-
- if (!createGroupDto.group_name || !createGroupDto.assigned_mgr || !createGroupDto.elements?.length) {
-      throw new Error('Required fields are missing or invalid');
-    }
+ exceptionFactory: (errors) => {
+        // You can customize how errors are formatted here
+        const messages = errors.map(err => `${err.property} has wrong value ${err.value}, ${Object.values(err.constraints).join(', ')}`).join(', ');
+        return new Error(messages);
+      },
