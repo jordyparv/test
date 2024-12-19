@@ -6,3 +6,10 @@
         });
         return new Error(messages.join(', '));
       }
+
+
+
+  // Validate the body manually if needed
+    if (!createGroupDto.group_name || !createGroupDto.assigned_mgr || !createGroupDto.elements.length) {
+      throw new BadRequestException('Group Name, Assigned Manager, and Elements are required!');
+    }
