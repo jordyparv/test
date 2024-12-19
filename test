@@ -1,36 +1,6 @@
-import { ExceptionFilter, Catch, ArgumentsHost, BadRequestException } from '@nestjs/common';
-import { Request, Response } from 'express';
-
-@Catch(BadRequestException)
-export class ValidationExceptionFilter implements ExceptionFilter {
-  catch(exception: BadRequestException, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
-
-    // Extract the error details from the exception
-    const responseMessage = {
-      statusCode: exception.getStatus(),
-      message: exception.message,
-      error: 'Bad Request',
-    };
-
-    // Log the error
-    console.error('Validation Error: ', exception.message);
-
-    // Return the custom error response
-    response.status(exception.getStatus()).json(responseMessage);
-  }
+{
+  "group_name": "value",
+  "assigned_mgr": "userid",
+  "teams": [],
+  "elements": []
 }
-
- // Use the global exception filter
-  app.useGlobalFilters(new ValidationExceptionFilter());
-
-  // Use global pipes to handle validation errors
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
