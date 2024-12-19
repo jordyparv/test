@@ -4,3 +4,7 @@ new ValidationPipe({
       transform: true, // Transform payloads to DTO types (like arrays, etc.)
       skipMissingProperties: false, // Ensure missing properties trigger validation error
     })
+
+ if (!createGroupDto.group_name || !createGroupDto.assigned_mgr || !createGroupDto.elements?.length) {
+      throw new Error('Required fields are missing or invalid');
+    }
