@@ -1,20 +1,6 @@
-await directiveGroupRepository
-  .createQueryBuilder('gr')
-  .leftJoinAndSelect('gr.elementGroupMappings', 'egm')
-  .leftJoinAndSelect('egm.element', 'sele')
-  .leftJoinAndSelect('gr.userGroupMappings', 'ugm')
-  .leftJoinAndSelect('ugm.user', 'sc')
-  .select([
-    'gr.GROUP_NAME',
-    'sele.ELEMENT_DIVISION',
-    'sele.ELEMENT_DEPT',
-    'sc.LASTNAME',
-    'sc.FIRSTNAME',
-  ])
-  .addSelect('CONCAT(sc.LASTNAME, \', \', sc.FIRSTNAME)', 'Assigned_To')
-  .groupBy('gr.GROUP_NAME')
-  .addGroupBy('sele.ELEMENT_DIVISION')
-  .addGroupBy('sele.ELEMENT_DEPT')
-  .addGroupBy('sc.LASTNAME')
-  .addGroupBy('sc.FIRSTNAME')
-  .getRawMany();
+new ValidationPipe({
+      whitelist: true, // Strip properties that are not in the DTO
+      forbidNonWhitelisted: true, // Reject requests with properties not in the DTO
+      transform: true, // Transform payloads to DTO types (like arrays, etc.)
+      skipMissingProperties: false, // Ensure missing properties trigger validation error
+    })
