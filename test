@@ -1,20 +1,62 @@
- "workbench.colorCustomizations": {
-        "activityBar.activeBackground": "#93e6fc",
-        "activityBar.background": "#93e6fc",
-        "activityBar.foreground": "#15202b",
-        "activityBar.inactiveForeground": "#15202b99",
-        "activityBarBadge.background": "#fa45d4",
-        "activityBarBadge.foreground": "#15202b",
-        "commandCenter.border": "#15202b99",
-        "sash.hoverBorder": "#93e6fc",
-        "statusBar.background": "#61dafb",
-        "statusBar.foreground": "#15202b",
-        "statusBarItem.hoverBackground": "#2fcefa",
-        "statusBarItem.remoteBackground": "#61dafb",
-        "statusBarItem.remoteForeground": "#15202b",
-        "titleBar.activeBackground": "#61dafb",
-        "titleBar.activeForeground": "#15202b",
-        "titleBar.inactiveBackground": "#61dafb99",
-        "titleBar.inactiveForeground": "#15202b99"
-    },
-    "peacock.color": "#61dafb"
+async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
+    try {
+      let directiveGroup =
+        await this.DirectiveGroupEntityRepository.createQueryBuilder()
+          .insert()
+          .values({
+            GROUP_NAME: createSwitchDirectiveDto.group_name,
+            GROUP_ID: () => 'DIRECTIVE_GROUP_SEQ.NEXTVAL',
+            META_CREATED_BY: createSwitchDirectiveDto.created_by,
+            META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+            META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          })
+          .execute();
+      let groupUserMapping =
+        await this.DirectiveUserGroupMappingEntityRepository.createQueryBuilder()
+          .insert()
+          .values({
+            MAPPING_ID: () => 'DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL',
+            USER_ID: createSwitchDirectiveDto.assigned_mgr,
+            GROUP_ID: directiveGroup.raw?.GROUP_ID,
+            META_CREATED_BY: createSwitchDirectiveDto.created_by,
+            META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+            META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            ASSIGNED_TEAM: createSwitchDirectiveDto.teams
+              ? createSwitchDirectiveDto.teams.join(',')
+              : '',
+          })
+          .execute();
+      
+   
+      let queryBuilder=
+         this.directiveElementGroupMappingEntityRepository
+          .createQueryBuilder()
+          .insert();
+          createSwitchDirectiveDto.elements?.forEach(
+            ELEMENT_ID => {
+              queryBuilder.values({
+              ELEMENT_MAPPING_ID:()=> 'DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL',
+              GROUP_ID: directiveGroup.raw?.GROUP_ID,
+              ELEMENT_ID,
+              META_CREATED_BY: createSwitchDirectiveDto.created_by,
+              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+              META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            })})
+
+      let elementGroupMapping = await queryBuilder.execute()
+      return {
+        message: 'Switch directive save successfully',
+        status:HttpStatus.CREATED
+      };
+    } catch (error) {
+      logger.error(`Unable to add switch directive=> ${error.message}`)
+      
+      throw new HttpException(
+        { message: error.message },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
