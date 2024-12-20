@@ -1,103 +1,33 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
-import { getManager } from 'typeorm';
-
-async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
-  const queryRunner = this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
-  await queryRunner.startTransaction();
-
-  try {
-    const existingGroup = await queryRunner.manager
-      .createQueryBuilder()
-      .select('g.GROUP_ID')
-      .from('DirectiveGroup', 'g')
-      .where('g.GROUP_NAME = :groupName', { groupName: createSwitchDirectiveDto.group_name })
-      .getOne();
-
-    if (existingGroup) {
-      throw new HttpException(
-        { message: 'Group name already exists'
-     status: HttpStatus.BAD_REQUEST
-},
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const groupIdQuery = await queryRunner.manager.query('SELECT DIRECTIVE_GROUP_SEQ.NEXTVAL FROM dual');
-    const groupId = groupIdQuery[0]?.NEXTVAL;
-
-    let directiveGroup = await queryRunner.manager
-      .createQueryBuilder()
-      .insert()
-      .into('DirectiveGroup')
-      .values({
-        GROUP_NAME: createSwitchDirectiveDto.group_name,
-        GROUP_ID: groupId,
-        META_CREATED_BY: createSwitchDirectiveDto.created_by,
-        META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-        META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-      })
-      .execute();
-
-    const mappingIdQuery = await queryRunner.manager.query('SELECT DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL FROM dual');
-    const mappingId = mappingIdQuery[0]?.NEXTVAL;
-
-    await queryRunner.manager
-      .createQueryBuilder()
-      .insert()
-      .into('DirectiveUserGroupMapping')
-      .values({
-        MAPPING_ID: mappingId,
-        USER_ID: createSwitchDirectiveDto.assigned_mgr,
-        GROUP_ID: groupId,
-        META_CREATED_BY: createSwitchDirectiveDto.created_by,
-        META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-        META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        ASSIGNED_TEAM: createSwitchDirectiveDto.teams ? createSwitchDirectiveDto.teams.join(',') : '',
-      })
-      .execute();
-
-    if (createSwitchDirectiveDto.elements?.length) {
-      const elementsToInsert = await Promise.all(createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
-        const elementMappingIdQuery = await queryRunner.manager.query('SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual');
-        const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
-
-        return {
-          ELEMENT_MAPPING_ID: elementMappingId,
-          GROUP_ID: groupId,
-          ELEMENT_ID,
-          META_CREATED_BY: createSwitchDirectiveDto.created_by,
-          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        };
-      }));
-
-      await queryRunner.manager
-        .createQueryBuilder()
-        .insert()
-        .into('DirectiveElementGroupMapping')
-        .values(elementsToInsert)
-        .execute();
-    }
-
-    await queryRunner.commitTransaction();
-
-    return {
-      message: 'Switch directive saved successfully',
-      status: HttpStatus.CREATED,
-    };
-  } catch (error) {
-    await queryRunner.rollbackTransaction();
-    logger.error(`Unable to add switch directive => ${error.message}`);
-
-    throw new HttpException(
-      { message: error.message },
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-  } finally {
-    await queryRunner.release();
+ async getSwitchDirective() {
+    return await this.DirectiveGroupEntityRepository.createQueryBuilder('gr')
+      .select([
+        `gr.GROUP_NAME AS "group_name"`,
+        `gr.GROUP_ID AS "group_id"`,
+        `sc.LASTNAME || ', ' || sc.FIRSTNAME AS "assigned_to"`,
+        `sele.ELEMENT_DIVISION AS "element_division"`,
+        `sele.ELEMENT_DEPT AS "element_dept"`,
+      ])
+      .innerJoin(
+        DirectiveUserGroupMappingEntity,
+        'ugm',
+        'ugm.GROUP_ID=gr.GROUP_ID',
+      )
+      .innerJoin(
+        DirectiveElementGroupMappingEntity,
+        'egm',
+        'egm.GROUP_ID = gr.GROUP_ID',
+      )
+      .innerJoin(
+        SwitchElementEntity,
+        'sele',
+        'sele.ELEMENT_ID = egm.ELEMENT_ID',
+      )
+      .innerJoin(SecContactEntity, 'sc', 'sc.LOGIN_ID = ugm.USER_ID')
+      .groupBy('gr.GROUP_NAME')
+      .addGroupBy('gr.GROUP_ID')
+      .addGroupBy('sele.ELEMENT_DIVISION')
+      .addGroupBy('sele.ELEMENT_DEPT')
+      .addGroupBy('sc.LASTNAME')
+      .addGroupBy('sc.FIRSTNAME')
+      .getRawMany();
   }
-}
-
