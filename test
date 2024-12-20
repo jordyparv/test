@@ -1,81 +1,13 @@
-async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
-  const queryRunner = this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
-  await queryRunner.startTransaction();
-
-  try {
-    // Insert into DirectiveGroup table
-    let directiveGroup = await queryRunner
+  const existingGroup = await queryRunner.manager
       .createQueryBuilder()
-      .insert()
-      .into('DirectiveGroup')
-      .values({
-        GROUP_NAME: createSwitchDirectiveDto.group_name,
-        GROUP_ID: () => 'DIRECTIVE_GROUP_SEQ.NEXTVAL',
-        META_CREATED_BY: createSwitchDirectiveDto.created_by,
-        META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-        META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-      })
-      .execute();
+      .select('g.GROUP_ID')
+      .from('DirectiveGroup', 'g')
+      .where('g.GROUP_NAME = :groupName', { groupName: createSwitchDirectiveDto.group_name })
+      .getOne();
 
-    // Get the GROUP_ID of the inserted directive group
-    const groupId = directiveGroup.raw?.GROUP_ID;
-
-    // Insert into DirectiveUserGroupMapping table
-    await queryRunner
-      .createQueryBuilder()
-      .insert()
-      .into('DirectiveUserGroupMapping')
-      .values({
-        MAPPING_ID: () => 'DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL',
-        USER_ID: createSwitchDirectiveDto.assigned_mgr,
-        GROUP_ID: groupId,
-        META_CREATED_BY: createSwitchDirectiveDto.created_by,
-        META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-        META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        ASSIGNED_TEAM: createSwitchDirectiveDto.teams ? createSwitchDirectiveDto.teams.join(',') : '',
-      })
-      .execute();
-
-    // Insert into DirectiveElementGroupMapping table
-    const queryBuilder = queryRunner.manager
-      .createQueryBuilder()
-      .insert()
-      .into('DirectiveElementGroupMapping');
-
-    createSwitchDirectiveDto.elements?.forEach(ELEMENT_ID => {
-      queryBuilder.values({
-        ELEMENT_MAPPING_ID: () => 'DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL',
-        GROUP_ID: groupId,
-        ELEMENT_ID,
-        META_CREATED_BY: createSwitchDirectiveDto.created_by,
-        META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-        META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-      });
-    });
-
-    await queryBuilder.execute();
-
-    // Commit the transaction after all insertions
-    await queryRunner.commitTransaction();
-
-    return {
-      message: 'Switch directive saved successfully',
-      status: HttpStatus.CREATED,
-    };
-  } catch (error) {
-    // In case of any error, rollback the transaction
-    await queryRunner.rollbackTransaction();
-    logger.error(`Unable to add switch directive => ${error.message}`);
-
-    throw new HttpException(
-      { message: error.message },
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
-  } finally {
-    // Release the query runner to prevent memory leaks
-    await queryRunner.release();
-  }
-}
+    if (existingGroup) {
+      throw new HttpException(
+        { message: 'Group name already exists' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
