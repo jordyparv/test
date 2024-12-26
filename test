@@ -1,12 +1,27 @@
-newRows?.forEach(newRow => {
-  const exists = rows.some(existingRow =>
-    existingRow.element_name === newRow.element_name &&
-    existingRow.vendor === newRow.vendor &&
-    existingRow.sub_element_name === newRow.sub_element_name
-  );
+import { IsString, IsOptional, IsArray, IsInt, IsArrayNotEmpty } from 'class-validator';
+
+export class UpdateSwitchDirectiveDto {
   
-  // If the row doesn't exist in the array, push it
-  if (!exists) {
-    rows.push(newRow);
-  }
-});
+  @IsOptional()
+  @IsString()
+  group_name?: string;  // The name of the group to update
+
+  @IsOptional()
+  @IsInt()
+  assigned_mgr?: number;  // The manager to be assigned to the group (user ID)
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  teams?: string[];  // A list of teams assigned to the group
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  elements?: number[];  // List of element IDs to be associated with the group
+  
+  @IsOptional()
+  @IsString()
+  updated_by?: string;  // The user who is making the update
+  
+}
