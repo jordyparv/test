@@ -1,6 +1,12 @@
-  const newRows = formedState?.sub_element_name?.map(subElement => ({
-        element_name: formedState?.element_name,
-        vendor: formedState?.vendor,
-        sub_element_name: subElement,
-        elementId:subElementOptions?.find(item=>item.ELEMENT_DETAILS===subElement)?.ELEMENT_ID
-      }));
+newRows?.forEach(newRow => {
+  const exists = rows.some(existingRow =>
+    existingRow.element_name === newRow.element_name &&
+    existingRow.vendor === newRow.vendor &&
+    existingRow.sub_element_name === newRow.sub_element_name
+  );
+  
+  // If the row doesn't exist in the array, push it
+  if (!exists) {
+    rows.push(newRow);
+  }
+});
