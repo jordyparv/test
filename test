@@ -1,27 +1,6 @@
-import { IsString, IsOptional, IsArray, IsInt, IsArrayNotEmpty } from 'class-validator';
-
-export class UpdateSwitchDirectiveDto {
-  
-  @IsOptional()
-  @IsString()
-  group_name?: string;  // The name of the group to update
-
-  @IsOptional()
-  @IsInt()
-  assigned_mgr?: number;  // The manager to be assigned to the group (user ID)
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  teams?: string[];  // A list of teams assigned to the group
-
-  @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  elements?: number[];  // List of element IDs to be associated with the group
-  
-  @IsOptional()
-  @IsString()
-  updated_by?: string;  // The user who is making the update
-  
-}
+ const groupedData = rawData.reduce(async (acc, row) => {
+      const teams = await this.SecContactEntityRepository
+      .createQueryBuilder()
+      .select([`select TRIM(LASTNAME) || ', ' || TRIM(FIRSTNAME) as "switchtech_name", role as "role",login_id as "login_id"`])
+      .whereInIds(row?.assigned_team?.split(','))
+      .getRawMany();
