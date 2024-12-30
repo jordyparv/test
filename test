@@ -1,3 +1,27 @@
- ● SwitchDirectiveService › getSwitchDirective › should correctly fetch and process raw data into grouped structure                                                                                                  
-                                                                                                           
-    TypeError: Cannot read properties of undefined (reading 'createQueryBuilder')   
+it('should successfully create a switch directive', async () => {
+  // Arrange
+  const createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
+    groupName: 'Group A',
+    managerId: 'manager1',
+    assignedTeam: 'user1,user2',
+    vendor: 'Vendor X',
+    elementDivision: 'Element 1',
+    elementDept: 'Dept A',
+    elements: [{ elementId: 1, elementName: 'Element A' }],
+  };
+
+  const mockDirectiveGroup = new DirectiveGroupEntity();
+  mockDirectiveGroup.groupName = 'Group A';
+
+  const mockSave = jest.fn().mockResolvedValue(mockDirectiveGroup);
+  service['DirectiveGroupEntityRepository'].save = mockSave;
+
+  // Act
+  const result = await service.createSwitchDirective(createSwitchDirectiveDto);
+
+  // Assert
+  expect(result).toEqual(mockDirectiveGroup);
+  expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({
+    groupName: 'Group A',
+  }));
+});
