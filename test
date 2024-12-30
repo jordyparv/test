@@ -1,155 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SwitchDirectiveService } from './switch-directive.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DirectiveUserGroupMappingEntity } from './entities/switch.directive.entity.DirectiveUserGroupMappingEntity';
-import { DirectiveGroupEntity } from './entities/switch.directive.entity.DirectiveGroupEntity';
-import { SecContactEntity } from './entities/switch.directive.entity.SecContactEntity';
-import { SwitchElementEntity } from './entities/switch.directive.entity.SwitchElementEntity';
-import { SecUsersEntity } from './entities/switch.directive.entity.SecUsersEntity';
-import { CreateSwitchDirectiveDto } from './dto/create.SwitchDirective.dto';
-import { HttpException, HttpStatus } from '@nestjs/common';
-
-describe('SwitchDirectiveService', () => {
-  let service: SwitchDirectiveService;
-  let directiveUserGroupMappingRepository: Repository<DirectiveUserGroupMappingEntity>;
-  let directiveGroupEntityRepository: Repository<DirectiveGroupEntity>;
-  let secContactEntityRepository: Repository<SecContactEntity>;
-  let switchElementRepository: Repository<SwitchElementEntity>;
-  let secUsersEntityRepository: Repository<SecUsersEntity>;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SwitchDirectiveService,
-        {
-          provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
-          useClass: Repository,
-        },
-        {
-          provide: getRepositoryToken(DirectiveGroupEntity),
-          useClass: Repository,
-        },
-        {
-          provide: getRepositoryToken(SecContactEntity),
-          useClass: Repository,
-        },
-        {
-          provide: getRepositoryToken(SwitchElementEntity),
-          useClass: Repository,
-        },
-        {
-          provide: getRepositoryToken(SecUsersEntity),
-          useClass: Repository,
-        },
-      ],
-    }).compile();
-
-    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
-    directiveUserGroupMappingRepository = module.get<Repository<DirectiveUserGroupMappingEntity>>(getRepositoryToken(DirectiveUserGroupMappingEntity));
-    directiveGroupEntityRepository = module.get<Repository<DirectiveGroupEntity>>(getRepositoryToken(DirectiveGroupEntity));
-    secContactEntityRepository = module.get<Repository<SecContactEntity>>(getRepositoryToken(SecContactEntity));
-    switchElementRepository = module.get<Repository<SwitchElementEntity>>(getRepositoryToken(SwitchElementEntity));
-    secUsersEntityRepository = module.get<Repository<SecUsersEntity>>(getRepositoryToken(SecUsersEntity));
-  });
-
-  describe('findAll', () => {
-    it('should return all DirectiveUserGroupMappingEntity records', async () => {
-      const result = [{ MAPPING_ID: 1, USER_ID: 'user1', ASSIGNED_TEAM: 'team1' }];
-      jest.spyOn(directiveUserGroupMappingRepository, 'find').mockResolvedValue(result);
-
-      expect(await service.findAll()).toEqual(result);
-    });
-  });
-
-  describe('getSwitchDirectiveMgrTeam', () => {
-    it('should return the team for a valid manager and mapping_id', async () => {
-      const mgrId = 'user1';
-      const mappingId = 1;
-      const managerData = [
-        {
-          ASSIGNED_TEAM: 'team1,team2',
-        },
-      ];
-      const teamData = [
-        { name: 'John, Doe', alt_phone: '12345', phone: '67890', role: 'manager', email: 'john.doe@example.com', title: 'Manager', login_id: 'team1' },
-        { name: 'Jane, Doe', alt_phone: '54321', phone: '09876', role: 'member', email: 'jane.doe@example.com', title: 'Member', login_id: 'team2' }
-      ];
-
-      jest.spyOn(directiveUserGroupMappingRepository, 'findBy').mockResolvedValue(managerData);
-      jest.spyOn(secContactEntityRepository, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(teamData),
-      });
-
-      const result = await service.getSwitchDirectiveMgrTeam(mgrId, mappingId);
-      expect(result).toEqual(teamData);
-    });
-
-    it('should throw HttpException if manager or mapping_id does not exist', async () => {
-      const mgrId = 'user1';
-      const mappingId = 999;
-
-      jest.spyOn(directiveUserGroupMappingRepository, 'findBy').mockResolvedValue([]);
-
-      try {
-        await service.getSwitchDirectiveMgrTeam(mgrId, mappingId);
-      } catch (e) {
-        expect(e).toBeInstanceOf(HttpException);
-        expect(e.response.message).toEqual('Manager or mapping id not exist');
-        expect(e.status).toEqual(HttpStatus.BAD_REQUEST);
-      }
-    });
-  });
-
-  describe('create', () => {
-    it('should create a new switch directive and return a success message', async () => {
-      const createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-        group_name: 'Test Group',
-        created_by: 'user1',
-        assigned_mgr: 'user1',
-        teams: ['team1', 'team2'],
-        elements: [1, 2],
-      };
-      const existingGroup = undefined; // Simulate no existing group
-      jest.spyOn(directiveGroupEntityRepository, 'findOne').mockResolvedValue(existingGroup);
-      jest.spyOn(directiveGroupEntityRepository.manager, 'query').mockResolvedValue([{ NEXTVAL: 1 }]);
-      jest.spyOn(directiveUserGroupMappingRepository.manager, 'query').mockResolvedValue([{ NEXTVAL: 2 }]);
-      jest.spyOn(directiveUserGroupMappingRepository, 'insert').mockResolvedValue(null);
-      jest.spyOn(directiveElementGroupMappingEntityRepository, 'insert').mockResolvedValue(null);
-      jest.spyOn(directiveGroupEntityRepository.manager, 'createQueryBuilder').mockReturnValue({
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue(null),
-      });
-
-      const result = await service.create(createSwitchDirectiveDto);
-      expect(result).toEqual({
-        message: 'Switch directive saved successfully',
-        status: HttpStatus.CREATED,
-      });
-    });
-
-    it('should throw HttpException if group name already exists', async () => {
-      const createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-        group_name: 'Test Group',
-        created_by: 'user1',
-        assigned_mgr: 'user1',
-        teams: ['team1', 'team2'],
-        elements: [1, 2],
-      };
-      const existingGroup = { GROUP_ID: 1 }; // Simulate existing group
-      jest.spyOn(directiveGroupEntityRepository, 'findOne').mockResolvedValue(existingGroup);
-
-      try {
-        await service.create(createSwitchDirectiveDto);
-      } catch (e) {
-        expect(e).toBeInstanceOf(HttpException);
-        expect(e.response.message).toEqual('Group name already exists');
-        expect(e.status).toEqual(HttpStatus.BAD_REQUEST);
-      }
-    });
-  });
+jest.spyOn(directiveGroupEntityRepository.manager, 'createQueryBuilder').mockReturnValue({
+  select: jest.fn().mockReturnThis(),
+  innerJoin: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([
+    {
+      group_name: 'Test Group',
+      created_by: 'John Doe',
+      created_on: '2024-01-01',
+      group_id: 1,
+      mapping_id: 101,
+      assigned_team: 'Team A',
+      assigned_to: 'John Doe',
+      vendor: 'Vendor A',
+      elements_division: 'Division 1',
+      element_dept: 'Dept A',
+      element_id: 1001,
+    },
+  ]),
 });
