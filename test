@@ -1,52 +1,73 @@
-ORA-01489: result of string concatenation is too long
-01489. 00000 -  "result of string concatenation is too long"
-*Cause:    String concatenation result is more than the maximum size.
-*Action:   Make sure that the result is less than the maximum size.
-
-
-
-with tech_info as(
-      select
-      odsc.SWITCH_UNIVERSALID,
-       TO_CLOB(listagg('{"fname":"' || sc.firstname || '","lname":"' || sc.lastname || '","title":"'|| sc.title || 
-      '","tech_id":"' || odsc.USERID ||'"manager_id":"'||sc.manager_id || '"manager_name":"'||(sc2.lastname||', '||sc2.firstname)||
-      '"manager_fname":"'||sc2.firstname||'"manager_lname":"'||sc2.lastname||
-      '"manager_title":"'||sc2.title||'"director_id":"'||sc2.director_id||
-      '"director_name":"'||(sc3.lastname||', '||sc3.firstname)||'"director_fname":"'||sc2.firstname||
-      '"director_lname":"'||(sc3.lastname)||'"director_title":"'||sc2.title||
-      '"phone":"'||(sc.phone)||'"alt_phone":"'||sc.alt_phone||
-      '"manager_phone":"'||(sc2.phone)||'"manager_alt_phone":"'||sc2.alt_phone||
-      '"director_phone":"'||(sc3.phone)||'"director_alt_phone":"'||sc3.alt_phone||
-      '"email":"'||(sc.email)||'"manager_email":"'||sc2.email||'"director_email":"'||sc3.email||'"}' ,',') 
-      within group (order by odsc.fname,odsc.lname)) as tech_details
-      from ops_data_switch_contacts odsc
-      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
-      right join SEC_CONTACT sc2 on sc.manager_id = sc2.login_id
-      right join SEC_CONTACT sc3 on sc2.manager_id = sc3.login_id
-      where odsc.cfd_role = 'SWITCH_TECH'
-      GROUP BY (odsc.SWITCH_UNIVERSALID)),
-      mgr_info as(
-      select
-      odsc.SWITCH_UNIVERSALID,
-      TO_CLOB(listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","title":"'|| sc.title
-      || '","mgr_id":"' || odsc.USERID ||'"manager_id":"'||sc.manager_id || '"manager_name":"'||(sc2.lastname||', '||sc2.firstname)||
-      '"manager_fname":"'||sc2.firstname||'"manager_lname":"'||sc2.lastname||
-      '"manager_title":"'||sc2.title||'"director_id":"'||sc2.director_id||
-      '"director_name":"'||(sc3.lastname||', '||sc3.firstname)||'"director_fname":"'||sc2.firstname||
-      '"director_lname":"'||(sc3.lastname)||'"director_title":"'||sc2.title||
-      '"phone":"'||(sc.phone)||'"alt_phone":"'||sc.alt_phone||
-      '"manager_phone":"'||(sc2.phone)||'"manager_alt_phone":"'||sc2.alt_phone||
-      '"director_phone":"'||(sc3.phone)||'"director_alt_phone":"'||sc3.alt_phone||
-      '"email":"'||(sc.email)||'"manager_email":"'||sc2.email||'"director_email":"'||sc3.email||'"}' ,',')          
-      within group (order by odsc.fname,odsc.lname)) as mgr_details 
-      from ops_data_switch_contacts odsc
-      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
-      right join SEC_CONTACT sc2 on sc.manager_id = sc2.login_id
-      right join SEC_CONTACT sc3 on sc2.manager_id = sc3.login_id
-      where odsc.cfd_role = 'SWITCH_MANAGER'
-      GROUP BY (odsc.SWITCH_UNIVERSALID))
-      select ods.locationid as "locationid",ods.switch as "switch",ods.market as "area",ods.region as "region",
-      ods.sub_market as "market",ods.phone_number as "phone_number",st.tech_details as "tech_info",mi.mgr_details as "mgr_info" from ops_data_switch ods
-      join tech_info st on st.SWITCH_UNIVERSALID =ods.switch_unid
-      join mgr_info mi on mi.SWITCH_UNIVERSALID =ods.switch_unid
-      where ods.locationid = 737;
+WITH tech_info AS (
+    SELECT 
+        odsc.SWITCH_UNIVERSALID,
+        TO_CLOB(
+            RTRIM(
+                XMLAGG(
+                    XMLELEMENT(
+                        e, 
+                        '{"fname":"' || sc.firstname || '","lname":"' || sc.lastname || '","title":"' || sc.title ||
+                        '","tech_id":"' || odsc.USERID || '","manager_id":"' || sc.manager_id || '","manager_name":"' ||
+                        (sc2.lastname || ', ' || sc2.firstname) || '","manager_fname":"' || sc2.firstname || '"manager_lname":"' ||
+                        sc2.lastname || '","manager_title":"' || sc2.title || '","director_id":"' || sc2.director_id ||
+                        '","director_name":"' || (sc3.lastname || ', ' || sc3.firstname) || '"director_fname":"' || sc2.firstname ||
+                        '"director_lname":"' || (sc3.lastname) || '"director_title":"' || sc2.title || '","phone":"' ||
+                        sc.phone || '"alt_phone":"' || sc.alt_phone || '"manager_phone":"' || sc2.phone ||
+                        '"manager_alt_phone":"' || sc2.alt_phone || '"director_phone":"' || sc3.phone || 
+                        '"director_alt_phone":"' || sc3.alt_phone || '"email":"' || sc.email || '"manager_email":"' || sc2.email ||
+                        '"director_email":"' || sc3.email || '"}'
+                    )
+                ).EXTRACT('//text()').GetClobVal(), 
+            ','
+            )
+        ) AS tech_details
+    FROM ops_data_switch_contacts odsc
+    RIGHT JOIN SEC_CONTACT sc ON (odsc.userid = sc.login_id)
+    RIGHT JOIN SEC_CONTACT sc2 ON sc.manager_id = sc2.login_id
+    RIGHT JOIN SEC_CONTACT sc3 ON sc2.manager_id = sc3.login_id
+    WHERE odsc.cfd_role = 'SWITCH_TECH'
+    GROUP BY odsc.SWITCH_UNIVERSALID
+),
+mgr_info AS (
+    SELECT 
+        odsc.SWITCH_UNIVERSALID,
+        TO_CLOB(
+            RTRIM(
+                XMLAGG(
+                    XMLELEMENT(
+                        e, 
+                        '{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","title":"' || sc.title ||
+                        '","mgr_id":"' || odsc.USERID || '","manager_id":"' || sc.manager_id || '","manager_name":"' ||
+                        (sc2.lastname || ', ' || sc2.firstname) || '","manager_fname":"' || sc2.firstname || '"manager_lname":"' ||
+                        sc2.lastname || '","manager_title":"' || sc2.title || '","director_id":"' || sc2.director_id ||
+                        '","director_name":"' || (sc3.lastname || ', ' || sc3.firstname) || '"director_fname":"' || sc2.firstname ||
+                        '"director_lname":"' || (sc3.lastname) || '"director_title":"' || sc2.title || '","phone":"' ||
+                        sc.phone || '"alt_phone":"' || sc.alt_phone || '"manager_phone":"' || sc2.phone ||
+                        '"manager_alt_phone":"' || sc2.alt_phone || '"director_phone":"' || sc3.phone || 
+                        '"director_alt_phone":"' || sc3.alt_phone || '"email":"' || sc.email || '"manager_email":"' || sc2.email ||
+                        '"director_email":"' || sc3.email || '"}'
+                    )
+                ).EXTRACT('//text()').GetClobVal(), 
+            ','
+            )
+        ) AS mgr_details
+    FROM ops_data_switch_contacts odsc
+    RIGHT JOIN SEC_CONTACT sc ON (odsc.userid = sc.login_id)
+    RIGHT JOIN SEC_CONTACT sc2 ON sc.manager_id = sc2.login_id
+    RIGHT JOIN SEC_CONTACT sc3 ON sc2.manager_id = sc3.login_id
+    WHERE odsc.cfd_role = 'SWITCH_MANAGER'
+    GROUP BY odsc.SWITCH_UNIVERSALID
+)
+SELECT 
+    ods.locationid AS "locationid",
+    ods.switch AS "switch",
+    ods.market AS "area",
+    ods.region AS "region",
+    ods.sub_market AS "market",
+    ods.phone_number AS "phone_number",
+    st.tech_details AS "tech_info",
+    mi.mgr_details AS "mgr_info"
+FROM ops_data_switch ods
+JOIN tech_info st ON st.SWITCH_UNIVERSALID = ods.switch_unid
+JOIN mgr_info mi ON mi.SWITCH_UNIVERSALID = ods.switch_unid
+WHERE ods.locationid = 737;
