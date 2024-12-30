@@ -1,66 +1,52 @@
-async getSwitchDirective() {
-  // Step 1: Fetch the raw data
-  const rawData = await this.DirectiveGroupEntityRepository.createQueryBuilder('gr')
-    .select([
-      `gr.GROUP_NAME AS "group_name"`,
-      `gr.META_CREATED_BY AS "created_by"`,
-      `TO_CHAR(TRUNC(gr.META_CREATED_DATE), 'YYYY-MM-DD') AS "created_on"`,
-      `gr.GROUP_ID AS "group_id"`,
-      `ugm.MAPPING_ID AS "mapping_id"`,
-      `ugm.ASSIGNED_TEAM AS "assigned_team"`,
-      `sc.LASTNAME || ', ' || sc.FIRSTNAME AS "assigned_to"`,
-      `sele.VENDOR AS "vendor"`,
-      `sele.ELEMENT_DIVISION AS "elements_division"`,
-      `sele.ELEMENT_DEPT AS "element_dept"`,
-      `sele.ELEMENT_ID AS "element_id"`,
-    ])
-    .innerJoin(DirectiveUserGroupMappingEntity, 'ugm', 'ugm.GROUP_ID = gr.GROUP_ID')
-    .innerJoin(DirectiveElementGroupMappingEntity, 'egm', 'egm.GROUP_ID = gr.GROUP_ID')
-    .innerJoin(SwitchElementEntity, 'sele', 'sele.ELEMENT_ID = egm.ELEMENT_ID')
-    .innerJoin(SecContactEntity, 'sc', 'sc.LOGIN_ID = ugm.USER_ID')
-    .getRawMany();
+ORA-01489: result of string concatenation is too long
+01489. 00000 -  "result of string concatenation is too long"
+*Cause:    String concatenation result is more than the maximum size.
+*Action:   Make sure that the result is less than the maximum size.
 
-  // Step 2: Process the raw data into the desired structure
-  const groupedData = [];
 
-  for (const row of rawData) {
-    const teams = await this.SecContactEntityRepository
-      .createQueryBuilder()
-      .select([
-        `TRIM(LASTNAME) || ', ' || TRIM(FIRSTNAME) AS "switchtech_name"`,
-        `role AS "role"`,
-        `login_id AS "login_id"`,
-      ])
-      .whereInIds(row?.assigned_team?.split(','))
-      .getRawMany();
 
-    const { element_id, elements_division, element_dept, group_id, vendor, ...rest } = row;
-
-    // Find the existing group or create a new one if it doesn't exist
-    let group = groupedData.find((g) => g.group_id === group_id);
-    if (!group) {
-      group = {
-        elements_division,
-        vendor,
-        ...rest,
-        teams,
-        elements: [], // Initialize the elements array
-      };
-      groupedData.push(group);
-    }
-
-    // Add the element information to the group's elements array
-    group.elements.push({
-      element_id,
-      element_name: elements_division,
-      vendor,
-      sub_element_name: element_dept,
-    });
-
-    // Update element_dept count
-    group.element_dept = `${group.elements.length} Dept`;
-  }
-
-  // Step 3: Return the grouped data
-  return groupedData;
-}
+with tech_info as(
+      select
+      odsc.SWITCH_UNIVERSALID,
+       TO_CLOB(listagg('{"fname":"' || sc.firstname || '","lname":"' || sc.lastname || '","title":"'|| sc.title || 
+      '","tech_id":"' || odsc.USERID ||'"manager_id":"'||sc.manager_id || '"manager_name":"'||(sc2.lastname||', '||sc2.firstname)||
+      '"manager_fname":"'||sc2.firstname||'"manager_lname":"'||sc2.lastname||
+      '"manager_title":"'||sc2.title||'"director_id":"'||sc2.director_id||
+      '"director_name":"'||(sc3.lastname||', '||sc3.firstname)||'"director_fname":"'||sc2.firstname||
+      '"director_lname":"'||(sc3.lastname)||'"director_title":"'||sc2.title||
+      '"phone":"'||(sc.phone)||'"alt_phone":"'||sc.alt_phone||
+      '"manager_phone":"'||(sc2.phone)||'"manager_alt_phone":"'||sc2.alt_phone||
+      '"director_phone":"'||(sc3.phone)||'"director_alt_phone":"'||sc3.alt_phone||
+      '"email":"'||(sc.email)||'"manager_email":"'||sc2.email||'"director_email":"'||sc3.email||'"}' ,',') 
+      within group (order by odsc.fname,odsc.lname)) as tech_details
+      from ops_data_switch_contacts odsc
+      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
+      right join SEC_CONTACT sc2 on sc.manager_id = sc2.login_id
+      right join SEC_CONTACT sc3 on sc2.manager_id = sc3.login_id
+      where odsc.cfd_role = 'SWITCH_TECH'
+      GROUP BY (odsc.SWITCH_UNIVERSALID)),
+      mgr_info as(
+      select
+      odsc.SWITCH_UNIVERSALID,
+      TO_CLOB(listagg('{"fname":"' || odsc.fname || '","lname":"' || odsc.lname || '","title":"'|| sc.title
+      || '","mgr_id":"' || odsc.USERID ||'"manager_id":"'||sc.manager_id || '"manager_name":"'||(sc2.lastname||', '||sc2.firstname)||
+      '"manager_fname":"'||sc2.firstname||'"manager_lname":"'||sc2.lastname||
+      '"manager_title":"'||sc2.title||'"director_id":"'||sc2.director_id||
+      '"director_name":"'||(sc3.lastname||', '||sc3.firstname)||'"director_fname":"'||sc2.firstname||
+      '"director_lname":"'||(sc3.lastname)||'"director_title":"'||sc2.title||
+      '"phone":"'||(sc.phone)||'"alt_phone":"'||sc.alt_phone||
+      '"manager_phone":"'||(sc2.phone)||'"manager_alt_phone":"'||sc2.alt_phone||
+      '"director_phone":"'||(sc3.phone)||'"director_alt_phone":"'||sc3.alt_phone||
+      '"email":"'||(sc.email)||'"manager_email":"'||sc2.email||'"director_email":"'||sc3.email||'"}' ,',')          
+      within group (order by odsc.fname,odsc.lname)) as mgr_details 
+      from ops_data_switch_contacts odsc
+      right JOIN SEC_CONTACT sc on (odsc.userid = sc.login_id)
+      right join SEC_CONTACT sc2 on sc.manager_id = sc2.login_id
+      right join SEC_CONTACT sc3 on sc2.manager_id = sc3.login_id
+      where odsc.cfd_role = 'SWITCH_MANAGER'
+      GROUP BY (odsc.SWITCH_UNIVERSALID))
+      select ods.locationid as "locationid",ods.switch as "switch",ods.market as "area",ods.region as "region",
+      ods.sub_market as "market",ods.phone_number as "phone_number",st.tech_details as "tech_info",mi.mgr_details as "mgr_info" from ops_data_switch ods
+      join tech_info st on st.SWITCH_UNIVERSALID =ods.switch_unid
+      join mgr_info mi on mi.SWITCH_UNIVERSALID =ods.switch_unid
+      where ods.locationid = 737;
