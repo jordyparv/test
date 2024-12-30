@@ -1,8 +1,3 @@
-const directiveGroupEntityRepository = {
-  createQueryBuilder: jest.fn().mockReturnValue({
-    select: jest.fn().mockReturnThis(),
-    innerJoin: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockResolvedValue(rawData),
-  }),
-};
+ ● SwitchDirectiveService › getSwitchDirective › should correctly fetch and process raw data into grouped structure                                                                                                  
+                                                                                                           
+    TypeError: Cannot read properties of undefined (reading 'createQueryBuilder')   
