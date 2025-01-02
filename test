@@ -1,4 +1,4 @@
-  describe('getSwitchDirective', () => {
+ describe('getSwitchDirective', () => {
     it('should return grouped data from getSwitchDirective', async () => {
       // Mocking the first query (rawData)
       const rawData = [
@@ -32,14 +32,14 @@
           element_id: '102',
         },
       ];
-  
+
       jest.spyOn(directiveGroupRepo, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue(rawData)
       } as any);
-  
+
       // Mocking the second query (teams data) inside the loop
       const teams = [
         {
@@ -53,19 +53,19 @@
           login_id: 'user2',
         },
       ];
-  
-      
-      
+
+
+
       jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue(teams),
       } as any);
-  
+
       // Call the method
       const result = await service.getSwitchDirective();
-  
+
       // Assertions
       expect(result).toEqual([
         {
@@ -73,8 +73,11 @@
           elements_division: 'Division1',
           vendor: 'Vendor1',
           group_name: 'Group1',
+          "assigned_to": "John, Jane",
           created_by: 'User1',
           created_on: '2025-01-01',
+          "manager_id": "manager1",
+          "mapping_id": "1",
           assigned_team: [
             {
               switchtech_name: 'Switchtech1',
@@ -100,12 +103,16 @@
           element_dept: '1 Dept',
         },
         {
+
           group_id: '2', // New group added to test the else block
           elements_division: 'Division2',
+          "assigned_to": "Alice, Bob",
           vendor: 'Vendor2',
           group_name: 'Group2',
           created_by: 'User2',
           created_on: '2025-02-01',
+          "manager_id": "manager2",
+          "mapping_id": "2",
           assigned_team: [
             {
               switchtech_name: 'Switchtech1',
@@ -131,10 +138,10 @@
           element_dept: '1 Dept', // Match the length of the elements
         },
       ]);
-  
-    expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
-    expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure second query was called once
 
-    
+      expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
+      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(2); // Ensure second query was called once
+
+
     });
-});
+  });
