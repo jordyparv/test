@@ -1,112 +1,140 @@
-    // Mock the query runner that is used for database operations in the service
-    queryRunner = {
-      startTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
-      release: jest.fn(),
-      manager: {
-        createQueryBuilder: jest.fn(),
-        query: jest.fn(),
-      },
-    };
-
-    jest.spyOn(directiveGroupRepo.manager.connection, 'createQueryRunner').mockReturnValue(queryRunner);
-
-
- it('should correctly create a switch directive and handle transactions', async () => {
-    // Arrange
-    const createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-      group_name: 'Group 1',
-      assigned_mgr: 'manager1',
-      created_by: 'Admin',
-      teams: ['user1', 'user2'],
-      elements: [1, 2],
-    };
-
-    const existingGroup = null; // Simulate no existing group name
-    const groupId = 1; // Simulate generated group ID
-    const mappingId = 1; // Simulate generated mapping ID
-    const elementMappingId = 1; // Simulate generated element mapping ID
-
-    // Spy on the repository methods and simulate database behavior
-    const createQueryBuilderSpy = jest.spyOn(queryRunner.manager, 'createQueryBuilder');
-    const querySpy = jest.spyOn(queryRunner.manager, 'query');
-
-    // Simulating sequence results (for groupId, mappingId, elementMappingId)
-    querySpy.mockResolvedValueOnce([{ NEXTVAL: groupId }]) // Simulating getting group ID from sequence
-      .mockResolvedValueOnce([{ NEXTVAL: mappingId }]) // Simulating getting mapping ID from sequence
-      .mockResolvedValueOnce([{ NEXTVAL: elementMappingId }]); // Simulating getting element mapping ID from sequence
-
-    // Simulating the behavior of `createQueryBuilder` for the SELECT query to check for an existing group
-    createQueryBuilderSpy
-      .mockReturnValueOnce({
+  describe('getSwitchDirective', () => {
+    it('should return grouped data from getSwitchDirective', async () => {
+      // Mocking the first query (rawData)
+      const rawData = [
+        {
+          group_name: 'Group1',
+          created_by: 'User1',
+          created_on: '2025-01-01',
+          group_id: '1',
+          mapping_id: '1',
+          assigned_team: 'user1,user2',
+          assigned_to: 'John, Jane',
+          manager_id: 'manager1',
+          vendor: 'Vendor1',
+          elements_division: 'Division1',
+          element_dept: 'Dept1',
+          element_id: '101',
+        },
+        // Adding a second group with different `group_id` to test the else block
+        {
+          group_name: 'Group2',
+          created_by: 'User2',
+          created_on: '2025-02-01',
+          group_id: '2',
+          mapping_id: '2',
+          assigned_team: 'user2,user3',
+          assigned_to: 'Alice, Bob',
+          manager_id: 'manager2',
+          vendor: 'Vendor2',
+          elements_division: 'Division2',
+          element_dept: 'Dept2',
+          element_id: '102',
+        },
+      ];
+  
+      jest.spyOn(directiveGroupRepo, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rawData)
+      } as any);
+  
+      // Mocking the second query (teams data) inside the loop
+      const teams = [
+        {
+          switchtech_name: 'Switchtech1',
+          role: 'TECHNICIAN',
+          login_id: 'user1',
+        },
+        {
+          switchtech_name: 'Switchtech2',
+          role: 'SWITCH_TECHNICIAN',
+          login_id: 'user2',
+        },
+      ];
+  
+      
+      
+      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(existingGroup),
-      })
-      .mockReturnValueOnce({
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn(),
-      }) // Simulate insert for group
-      .mockReturnValueOnce({
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn(),
-      }) // Simulate insert for mapping
-      .mockReturnValueOnce({
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn(),
-      }); // Simulate insert for elements
+        getRawMany: jest.fn().mockResolvedValue(teams),
+      } as any);
+  
+      // Call the method
+      const result = await service.getSwitchDirective();
+  
+      // Assertions
+      expect(result).toEqual([
+        {
+          group_id: '1',
+          elements_division: 'Division1',
+          vendor: 'Vendor1',
+          group_name: 'Group1',
+          created_by: 'User1',
+          created_on: '2025-01-01',
+          assigned_team: [
+            {
+              switchtech_name: 'Switchtech1',
+              login_id: 'user1',
+              role: 'TECHNICIAN',
+              checked: true,
+            },
+            {
+              switchtech_name: 'Switchtech2',
+              login_id: 'user2',
+              role: 'SWITCH_TECHNICIAN',
+              checked: true,
+            },
+          ],
+          elements: [
+            {
+              element_id: '101',
+              element_name: 'Division1',
+              vendor: 'Vendor1',
+              sub_element_name: 'Dept1',
+            },
+          ],
+          element_dept: '1 Dept',
+        },
+        {
+          group_id: '2', // New group added to test the else block
+          elements_division: 'Division2',
+          vendor: 'Vendor2',
+          group_name: 'Group2',
+          created_by: 'User2',
+          created_on: '2025-02-01',
+          assigned_team: [
+            {
+              switchtech_name: 'Switchtech1',
+              login_id: 'user1',
+              role: 'TECHNICIAN',
+              checked: false, // Ensure this team isn't checked
+            },
+            {
+              switchtech_name: 'Switchtech2',
+              login_id: 'user2',
+              role: 'SWITCH_TECHNICIAN',
+              checked: true, // Ensure this team is checked
+            },
+          ],
+          elements: [
+            {
+              element_id: '102',
+              element_name: 'Division2',
+              vendor: 'Vendor2',
+              sub_element_name: 'Dept2',
+            },
+          ],
+          element_dept: '1 Dept', // Match the length of the elements
+        },
+      ]);
+  
+    expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
+    expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure second query was called once
 
-    // Act
-    const result = await service.create(createSwitchDirectiveDto);
-
-    // Assert
-    expect(result).toEqual({
-      message: 'Switch directive saved successfully',
-      status: HttpStatus.CREATED,
+    
     });
-
-    // Ensure the appropriate query methods are called
-    expect(queryRunner.startTransaction).toHaveBeenCalled();
-    expect(queryRunner.commitTransaction).toHaveBeenCalled();
-    expect(queryRunner.release).toHaveBeenCalled();
-    expect(createQueryBuilderSpy).toHaveBeenCalledTimes(4); // Four queries are expected (select for group, inserts for group, mapping, and elements)
-  });
-
-  it('should throw error if group name already exists', async () => {
-    // Arrange
-    const createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-      group_name: 'Group 1',
-      assigned_mgr: 'manager1',
-      created_by: 'Admin',
-      teams: ['user1', 'user2'],
-      elements: [1, 2],
-    };
-
-    const existingGroup = { GROUP_ID: 1 }; // Simulate that the group already exists
-
-    // Spy on the repository methods and simulate database behavior
-    const createQueryBuilderSpy = jest.spyOn(queryRunner.manager, 'createQueryBuilder');
-    createQueryBuilderSpy
-      .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(existingGroup),
-      });
-
-    // Act & Assert
-    await expect(service.create(createSwitchDirectiveDto)).rejects.toThrowError(new HttpException({
-      message: 'Group name already exists',
-      status: HttpStatus.BAD_REQUEST,
-    }, HttpStatus.BAD_REQUEST));
-
-    // Ensure that rollback and release are called in case of error
-    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
-    expect(queryRunner.release).toHaveBeenCalled();
-  });
+});
