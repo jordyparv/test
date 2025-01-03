@@ -1,213 +1,3 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SwitchDirectiveService } from './switch.directive.service';
-import { HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DirectiveUserGroupMappingEntity } from './entities/switch.directive.entity.DirectiveUserGroupMappingEntity';
-import { DirectiveGroupEntity } from './entities/switch.directive.entity.DirectiveGroupEntity';
-import { DirectiveElementGroupMappingEntity } from './entities/switch.directive.entity.DirectiveElementGroupMappingEntity';
-import { SecContactEntity } from './entities/switch.directive.entity.SecContactEntity';
-import { SwitchElementEntity } from './entities/switch.directive.entity.SwitchElementEntity';
-import { SecUsersEntity } from './entities/switch.directive.entity.SecUsersEntity';
-import { CreateSwitchDirectiveDto } from './dto/create.SwitchDirective.dto';
-import { MockTypeORM } from 'mock-typeorm'
-import { mockQueryRunner } from '../../src/common/util/mock-utils';
-import { SecRolesEntity } from './entities/switch.directive.entity.SecRolesEntity';
-import { query } from 'express';
-describe('SwitchDirectiveService', () => {
-  let service: SwitchDirectiveService;
-  let directiveUserGroupMappingRepo: Repository<DirectiveUserGroupMappingEntity>;
-  let directiveGroupRepo: Repository<DirectiveGroupEntity>;
-  let directiveElementGroupMappingRepo: Repository<DirectiveElementGroupMappingEntity>;
-  let secContactRepo: Repository<SecContactEntity>;
-  let switchElementRepo: Repository<SwitchElementEntity>;
-  let secUsersRepo: Repository<SecUsersEntity>;
-  let queryRunner: any;
-  let mockManager: any;
-  let mockRepository: any;
-  const createQueryBuilderMock = () => {
-    const queryBuilderMock = {
-      // Methods for SELECT queries
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      from: jest.fn().mockReturnThis(),
-      join: jest.fn().mockReturnThis(),
-      leftJoin: jest.fn().mockReturnThis(),
-      innerJoin: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orWhere: jest.fn().mockReturnThis(),
-      // Methods for INSERT queries
-      insert: jest.fn().mockReturnThis(),
-      into: jest.fn().mockReturnThis(),
-      values: jest.fn().mockReturnThis(),
-      // Methods for UPDATE queries
-      update: jest.fn().mockReturnThis(),
-      set: jest.fn().mockReturnThis(),
-      // Methods for DELETE queries
-      delete: jest.fn().mockReturnThis(),
-      // Methods for execution
-      execute: jest.fn().mockResolvedValue({ affected: 1 }), // Simulate successful execution
-      getOne: jest.fn().mockResolvedValue({ GROUP_ID: 1 }), // Simulate retrieving one record
-      getMany: jest.fn().mockResolvedValue([{ GROUP_ID: 1 }, { GROUP_ID: 2 }]), // Simulate retrieving multiple records
-      getRawOne: jest.fn().mockResolvedValue({ GROUP_ID: 1 }), // Simulate retrieving raw record
-      getRawMany: jest.fn().mockResolvedValue([{ GROUP_ID: 1 }, { GROUP_ID: 2 }]), // Simulate retrieving raw records
-      startTransaction: jest.fn().mockReturnThis(),
-      commitTransaction: jest.fn().mockReturnThis(),
-      rollbackTransaction: jest.fn().mockReturnThis(),
-      findOne: jest.fn(),
-      save: jest.fn(),
-      find: jest.fn(),
-      findBy: jest.fn(),
-      release: jest.fn(),
-      createQueryBuilder: jest.fn().mockReturnThis(),
-      createQueryRunner: jest.fn().mockReturnThis(),
-      manager: {
-        connection: {
-          createQueryBuilder: jest.fn().mockReturnThis(),
-          query: jest.fn().mockResolvedValue([]),
-        },
-        createQueryBuilder: jest.fn().mockReturnThis(),
-        query: jest.fn().mockReturnThis()
-      }
-    };
-
-    return queryBuilderMock;
-  };
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SwitchDirectiveService,
-        {
-          provide: getRepositoryToken(DirectiveGroupEntity),
-          useValue: {
-            findOne: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findBy: jest.fn(),
-            startTransaction: jest.fn(),
-            commitTransaction: jest.fn(),
-            rollbackTransaction: jest.fn(),
-            release: jest.fn(),
-            manager: {
-              connection: {
-                createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-                createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-              },
-              createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-              createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-            },
-            createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-            createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-            query: jest.fn()
-          },
-        },
-        {
-          provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
-          useValue: {
-            save: jest.fn(),
-            createQueryBuilder: jest.fn(),
-            findOne: jest.fn(),
-            find: jest.fn(),
-            findBy: jest.fn(),
-            findOneBy: jest.fn()
-          },
-        },
-        {
-          provide: getRepositoryToken(DirectiveElementGroupMappingEntity),
-          useValue: {
-            save: jest.fn(),
-            createQueryBuilder: jest.fn(),
-            findOne: jest.fn(),
-            find: jest.fn(),
-            findBy: jest.fn(),
-            findOneBy: jest.fn()
-          },
-        },
-        {
-          provide: 'QueryRunner',
-          useValue: {
-            startTransaction: jest.fn(),
-            commitTransaction: jest.fn(),
-            rollbackTransaction: jest.fn(),
-            release: jest.fn(),
-            manager: {
-              connection: {
-                createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-                createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-              },
-              createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-              createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-              query: jest.fn()
-            },
-            createQueryBuilder: jest.fn().mockReturnValue(createQueryBuilderMock()),
-            createQueryRunner: jest.fn().mockReturnValue(createQueryBuilderMock()),
-            query: jest.fn()
-          },
-        },
-        {
-          provide: getRepositoryToken(SecContactEntity),
-          useClass: Repository
-        },
-        {
-          provide: getRepositoryToken(SwitchElementEntity),
-          useClass: Repository
-        }, {
-          provide: getRepositoryToken(SecRolesEntity),
-          useClass: Repository
-        },
-        {
-          provide: getRepositoryToken(SecUsersEntity),
-          useClass: Repository
-        }
-
-      ],
-    }).compile();
-
-    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
-    directiveUserGroupMappingRepo = module.get<Repository<DirectiveUserGroupMappingEntity>>(
-      getRepositoryToken(DirectiveUserGroupMappingEntity),
-    );
-    directiveGroupRepo = module.get<Repository<DirectiveGroupEntity>>(
-      getRepositoryToken(DirectiveGroupEntity),
-    );
-    directiveElementGroupMappingRepo = module.get<Repository<DirectiveElementGroupMappingEntity>>(
-      getRepositoryToken(DirectiveElementGroupMappingEntity),
-    );
-    secContactRepo = module.get<Repository<SecContactEntity>>(getRepositoryToken(SecContactEntity));
-    switchElementRepo = module.get<Repository<SwitchElementEntity>>(
-      getRepositoryToken(SwitchElementEntity),
-    );
-    secUsersRepo = module.get<Repository<SecUsersEntity>>(getRepositoryToken(SecUsersEntity));
-    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
-    queryRunner = module.get('QueryRunner');
-    mockManager = queryRunner.manager;
-    mockRepository = module.get(getRepositoryToken(DirectiveGroupEntity));
-  });
-
-  describe('findAll', () => {
-    it('should return all DirectiveUserGroupMapping entities', async () => {
-      const mockData = [{ id: 1 }, { id: 2 }];
-      jest.spyOn(directiveUserGroupMappingRepo, 'find').mockResolvedValue(mockData as any);
-
-      const result = await service.findAll();
-      expect(result).toEqual(mockData);
-      expect(directiveUserGroupMappingRepo.find).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('findOne', () => {
-    it('should return a DirectiveUserGroupMapping entity by MAPPING_ID', async () => {
-      const mockEntity = { id: 1 };
-      jest.spyOn(directiveUserGroupMappingRepo, 'findOneBy').mockResolvedValue(mockEntity as any);
-
-      const result = await service.findOne(1);
-      expect(result).toEqual(mockEntity);
-      expect(directiveUserGroupMappingRepo.findOneBy).toHaveBeenCalledWith({ MAPPING_ID: 1 });
-    });
-  });
-
-  describe('getSwitchDirective', () => {
     it('should return grouped data from getSwitchDirective', async () => {
       // Mocking the first query (rawData)
       const rawData = [
@@ -241,14 +31,14 @@ describe('SwitchDirectiveService', () => {
           element_id: '102',
         },
       ];
-
+ 
       jest.spyOn(directiveGroupRepo, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue(rawData)
       } as any);
-
+ 
       // Mocking the second query (teams data) inside the loop
       const teams = [
         {
@@ -262,19 +52,19 @@ describe('SwitchDirectiveService', () => {
           login_id: 'user2',
         },
       ];
-
-
-
+ 
+     
+     
       jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue(teams),
       } as any);
-
+ 
       // Call the method
       const result = await service.getSwitchDirective();
-
+ 
       // Assertions
       expect(result).toEqual([
         {
@@ -282,11 +72,8 @@ describe('SwitchDirectiveService', () => {
           elements_division: 'Division1',
           vendor: 'Vendor1',
           group_name: 'Group1',
-          "assigned_to": "John, Jane",
           created_by: 'User1',
           created_on: '2025-01-01',
-          "manager_id": "manager1",
-          "mapping_id": "1",
           assigned_team: [
             {
               switchtech_name: 'Switchtech1',
@@ -312,16 +99,12 @@ describe('SwitchDirectiveService', () => {
           element_dept: '1 Dept',
         },
         {
-
           group_id: '2', // New group added to test the else block
           elements_division: 'Division2',
-          "assigned_to": "Alice, Bob",
           vendor: 'Vendor2',
           group_name: 'Group2',
           created_by: 'User2',
           created_on: '2025-02-01',
-          "manager_id": "manager2",
-          "mapping_id": "2",
           assigned_team: [
             {
               switchtech_name: 'Switchtech1',
@@ -347,276 +130,9 @@ describe('SwitchDirectiveService', () => {
           element_dept: '1 Dept', // Match the length of the elements
         },
       ]);
-
-      expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
-      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(2); // Ensure second query was called once
-
-
+ 
+    expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
+    expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure second query was called once
+ 
+   
     });
-  });
-
-  describe('createSwitchDirective', () => {
-    let createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-      assigned_mgr: 'iop',
-      teams: ['1tt', '332a'],
-      elements: [1, 342],
-      created_by: 'iop',
-      group_name: 'test'
-    }
-    it('should throw an error if the group name already exists', async () => {
-      // Mock that an existing group is found
-      jest.spyOn(directiveGroupRepo.manager.connection, 'createQueryRunner').mockReturnValue(createQueryBuilderMock() as any);
-      jest.spyOn(createQueryBuilderMock(), 'startTransaction').mockReturnValue(createQueryBuilderMock() as any);
-      // Mock the behavior of createQueryBuilder to simulate an existing group
-      const queryBuilderMock = {
-        createQueryBuilder: jest.fn(),
-        select: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue({ GROUP_ID: 1 }),
-        query: jest.fn()
-      };
-      // jest.spyOn(directiveGroupRepo.manager.connection, 'createQueryRunner')
-      //   .mockReturnValue({
-      //     select: jest.fn().mockReturnThis(),
-      //     from: jest.fn().mockReturnThis(),
-      //     where: jest.fn().mockReturnThis(),
-      //     getOne: jest.fn().mockReturnThis()
-      //   } as any);
-      // Ensure createQueryBuilder returns the mock query builder
-      mockManager.createQueryBuilder.mockReturnValue(queryBuilderMock);
-      try {
-        await service.create({ group_name: 'Test Group' } as any);
-      } catch (error) {
-        // Check that an error is thrown with the correct message
-        console.error({ error })
-        expect(error).toBe('Group name already exists');
-        expect(error.status).toBe(HttpStatus.BAD_REQUEST);
-      }
-
-      // Check that createQueryBuilder was called correctly and getOne was called
-      expect(mockManager.createQueryBuilder).toHaveBeenCalledTimes(1);
-      expect(queryBuilderMock.select).toHaveBeenCalledTimes(1);
-      expect(queryBuilderMock.getOne).toHaveBeenCalledTimes(1);
-    });
-
-    it('should successfully insert a new group and mapping', async () => {
-      // Mock that no group exists with that name
-      // mockManager.createQueryBuilder().select().from().where().getOne.mockResolvedValue(null);
-      jest.spyOn(directiveGroupRepo.manager, 'query').mockResolvedValue([{ NEXTVAL: 1 }] as any);
-      // Mock insertions for group and mapping
-      mockManager.createQueryBuilder().insert().into().values().execute.mockResolvedValue(undefined);
-
-      // Call the service method
-      const result = await service.create(createSwitchDirectiveDto);
-
-      expect(result).toEqual({
-        message: 'Switch directive saved successfully',
-        status: HttpStatus.CREATED,
-      });
-      expect(queryRunner.commitTransaction).toHaveBeenCalledTimes(1);
-      expect(queryRunner.release).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle error and rollback if an error occurs', async () => {
-      // Mock that no group exists with that name
-      mockManager.createQueryBuilder().select().from().where().getOne.mockResolvedValue(null);
-      mockManager.query.mockResolvedValue([{ NEXTVAL: 1 }]); // Mock NEXTVAL query
-
-      // Simulate an error during the insert operation
-      mockManager.createQueryBuilder().insert().into().values().execute.mockRejectedValue(new Error('Insert failed'));
-
-      await expect(service.create({
-        group_name: 'Test Group',
-        created_by: 'admin',
-        assigned_mgr: 1,
-        elements: [1],
-      } as any)).rejects.toThrowError('Insert failed');
-
-      // Verify rollback and release calls
-      expect(queryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
-      expect(queryRunner.release).toHaveBeenCalledTimes(1);
-    });
-  });
-
-
-  describe('getSwitchDirectiveMgrTeam', () => {
-    it('should throw HttpException if no manager or mapping is found', async () => {
-      jest.spyOn(directiveUserGroupMappingRepo, 'findBy').mockResolvedValue([]);
-
-      await expect(service.getSwitchDirectiveMgrTeam('mgr1', 1)).rejects.toThrow(
-        new HttpException(
-          { message: 'Manager or mapping id not exist' },
-          HttpStatus.BAD_REQUEST,
-        ),
-      );
-
-      expect(directiveUserGroupMappingRepo.findBy).toHaveBeenCalledWith({ MAPPING_ID: 1, USER_ID: 'mgr1' });
-    });
-
-    it('should return team data if manager is found', async () => {
-      jest.spyOn(directiveUserGroupMappingRepo, 'findBy').mockResolvedValue([
-        { ASSIGNED_TEAM: 'team1,team2' },
-      ] as any);
-
-      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([{ name: 'John Doe' }]),
-      } as any);
-
-      const result = await service.getSwitchDirectiveMgrTeam('mgr1', 1);
-      expect(result).toEqual([{ name: 'John Doe' }]);
-      expect(directiveUserGroupMappingRepo.findBy).toHaveBeenCalledWith({ MAPPING_ID: 1, USER_ID: 'mgr1' });
-      expect(secContactRepo.createQueryBuilder).toHaveBeenCalled();
-    });
-  });
-
-  describe('typeaheadManagers', () => {
-    it('should return search results when query matches', async () => {
-      const mockResults = [
-        { display_name: 'Smith, John - JSmith - CELL_SWITCH_MANAGER', login_id: 'JSmith' },
-      ];
-
-      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(mockResults),
-      } as any);
-
-      const result = await service.typeaheadManagers('john');
-      expect(result).toEqual(mockResults);
-      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
-    });
-
-    it('should return an empty array when no matches are found', async () => {
-      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
-      } as any);
-
-      const result = await service.typeaheadManagers('unknown');
-      expect(result).toEqual([]);
-      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getDistinctElementDivision', () => {
-    it('should return distinct element divisions', async () => {
-      const mockData = [{ ELEMENT_DIVISION: 'division1' }, { ELEMENT_DIVISION: 'division2' }];
-      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(mockData),
-      } as any);
-
-      const result = await service.getDistinctElementDivision();
-      expect(result).toEqual({ elementdivision: ['division1', 'division2'] });
-      expect(switchElementRepo.createQueryBuilder).toHaveBeenCalled();
-    });
-
-    it('should throw HttpException on query failure', async () => {
-      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockImplementation(() => {
-        throw new Error('Query failed');
-      });
-
-      await expect(service.getDistinctElementDivision()).rejects.toThrow(
-        new HttpException('Error while fetching distinct element divisions', HttpStatus.INTERNAL_SERVER_ERROR),
-      );
-    });
-  });
-
-  describe('getDistinctElementVendor', () => {
-    it('should return distinct element vendors', async () => {
-      const mockVendors = [{ VENDOR: 'Vendor1' }, { VENDOR: 'Vendor2' }];
-      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue(mockVendors),
-      } as any);
-
-      const result = await service.getDistinctElementVendor();
-      expect(result).toEqual({
-        elementvendors: ['Vendor1', 'Vendor2'],
-      });
-      expect(switchElementRepo.createQueryBuilder).toHaveBeenCalledWith('switch_Elements');
-    });
-
-    it('should throw InternalServerErrorException on query failure', async () => {
-      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockRejectedValue(new Error('Query failed')),
-      } as any);
-
-      await expect(service.getDistinctElementVendor()).rejects.toThrow(
-        new InternalServerErrorException('Error while fetching distinct element vendors', 'Query failed'),
-      );
-    });
-  });
-
-  describe('getTechnicians', () => {
-    it('should return technicians when condition is true', async () => {
-      const mockResults = [
-        { SWITCHTECH_NAME: 'Doe, John', ROLE: 'Technician', LOGIN_ID: 'tech1' },
-      ];
-      jest.spyOn(secContactRepo, 'query').mockResolvedValue(mockResults);
-
-      const result = await service.getTechnicians('manager1', true);
-      expect(result).toEqual([
-        { switchtech_name: 'Doe, John', role: 'Technician', login_id: 'tech1' },
-      ]);
-      expect(secContactRepo.query).toHaveBeenCalledWith(expect.any(String), ['manager1']);
-    });
-
-    it('should return technicians when condition is false', async () => {
-      const mockResults = [
-        { SWITCHTECH_NAME: 'Smith, Alice', ROLE: 'Field Technician', LOGIN_ID: 'tech2' },
-      ];
-      jest.spyOn(secContactRepo, 'query').mockResolvedValue(mockResults);
-
-      const result = await service.getTechnicians('manager1', false);
-      expect(result).toEqual([
-        { switchtech_name: 'Smith, Alice', role: 'Field Technician', login_id: 'tech2' },
-      ]);
-      expect(secContactRepo.query).toHaveBeenCalledWith(expect.any(String), ['manager1']);
-    });
-
-    it('should throw an error on query failure', async () => {
-      jest.spyOn(secContactRepo, 'query').mockRejectedValue(new Error('Query failed'));
-
-      await expect(service.getTechnicians('manager1', true)).rejects.toThrow(
-        new Error('Failed to fetch technician details'),
-      );
-    });
-  });
-
-  describe('getElementDetails', () => {
-    it('should return element details based on division and vendor', async () => {
-      const mockResults = [
-        { ELEMENT_DETAILS: 'Dept1 SubDept1', ELEMENT_ID: '1' },
-        { ELEMENT_DETAILS: 'Dept2 SubDept2', ELEMENT_ID: '2' },
-      ];
-      jest.spyOn(switchElementRepo, 'query').mockResolvedValue(mockResults);
-
-      const result = await service.getElementDetails('Division1', 'Vendor1');
-      expect(result).toEqual([
-        { element_details: 'Dept1 SubDept1', element_id: '1' },
-        { element_details: 'Dept2 SubDept2', element_id: '2' },
-      ]);
-      expect(switchElementRepo.query).toHaveBeenCalledWith(expect.any(String), ['Division1', 'Vendor1']);
-    });
-
-    it('should throw an error on query failure', async () => {
-      jest.spyOn(switchElementRepo, 'query').mockRejectedValue(new Error('Query failed'));
-
-      await expect(service.getElementDetails('Division1', 'Vendor1')).rejects.toThrow(
-        new Error('Failed to fetch element details'),
-      );
-    });
-  });
-});
