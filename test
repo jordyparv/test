@@ -1,121 +1,88 @@
-async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
-    const queryRunner =
-      this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
-    await queryRunner.startTransaction();
- 
-    try {
-      const existingGroup = await queryRunner.manager
-        .createQueryBuilder()
-        .select('g.GROUP_ID')
-        .from(DirectiveGroupEntity, 'g')
-        .where('g.GROUP_NAME = :groupName', {
-          groupName: createSwitchDirectiveDto.group_name,
-        })
-        .getOne();
- 
-      if (existingGroup) {
-        throw new HttpException(
-          {
-            message: 'Group name already exists',
-            status: HttpStatus.BAD_REQUEST,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
+queryRunner = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        createQueryBuilder: jest.fn(),
+        query: jest.fn(),
+        connection: {
+          createQueryRunner: jest.fn().mockReturnValue(queryRunner),
+        },
+      },
+
+afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+
+describe('createSwitchDirective', () => {
+    it('should throw an error if the group name already exists', async () => {
+      // Simulate that the group name already exists in the database
+      directiveGroupRepo.manager.createQueryBuilder().getOne.mockResolvedValue({
+        GROUP_ID: 1,
+      });
+
+      try {
+        await service.create(mockCreateSwitchDirectiveDto);
+      } catch (error) {
+        expect(error.response.message).toBe('Group name already exists');
+        expect(error.status).toBe(HttpStatus.BAD_REQUEST);
       }
- 
-      const groupIdQuery = await queryRunner.manager.query(
-        'SELECT DIRECTIVE_GROUP_SEQ.NEXTVAL FROM dual',
-      );
-      const groupId = groupIdQuery[0]?.NEXTVAL;
- 
-      await queryRunner.manager
-        .createQueryBuilder()
-        .insert()
-        .into(DirectiveGroupEntity)
-        .values({
-          GROUP_NAME: createSwitchDirectiveDto.group_name,
-          GROUP_ID: groupId,
-          META_CREATED_BY: createSwitchDirectiveDto.created_by,
-          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        })
-        .execute();
- 
-      const mappingIdQuery = await queryRunner.manager.query(
-        'SELECT DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
-      );
-      const mappingId = mappingIdQuery[0]?.NEXTVAL;
- 
-      await queryRunner.manager
-        .createQueryBuilder()
-        .insert()
-        .into(DirectiveUserGroupMappingEntity)
-        .values({
-          MAPPING_ID: mappingId,
-          USER_ID: createSwitchDirectiveDto.assigned_mgr,
-          GROUP_ID: groupId,
-          META_CREATED_BY: createSwitchDirectiveDto.created_by,
-          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          ASSIGNED_TEAM: createSwitchDirectiveDto.teams
-            ? createSwitchDirectiveDto.teams.join(',')
-            : '',
-        })
-        .execute();
- 
-      Iif (createSwitchDirectiveDto.elements?.length) {
-        const elementsToInsert = await Promise.all(
-          createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
-            const elementMappingIdQuery = await queryRunner.manager.query(
-              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
-            );
-            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
- 
-            return {
-              ELEMENT_MAPPING_ID: elementMappingId,
-              GROUP_ID: groupId,
-              ELEMENT_ID,
-              META_CREATED_BY: createSwitchDirectiveDto.created_by,
-              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-              META_LAST_UPDATED_DATE: () =>
-                'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-            };
-          }),
-        );
- 
-        await queryRunner.manager
-          .createQueryBuilder()
-          .insert()
-          .into(DirectiveElementGroupMappingEntity)
-          .values(elementsToInsert)
-          .execute();
+
+      expect(directiveGroupRepo.manager.createQueryBuilder().getOne).toHaveBeenCalled();
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('should successfully create a switch directive', async () => {
+      // Simulate that the group name does not exist in the database
+      directiveGroupRepo.manager.createQueryBuilder().getOne.mockResolvedValue(null);
+
+      // Mocking query results for group and mapping IDs
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Group ID
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Mapping ID
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Element Mapping ID
+
+      // Mock successful insert operation
+      directiveGroupRepo.manager.createQueryBuilder().execute.mockResolvedValue(null);
+
+      const result = await service.create(mockCreateSwitchDirectiveDto);
+
+      expect(result.message).toBe('Switch directive saved successfully');
+      expect(result.status).toBe(HttpStatus.CREATED);
+      expect(queryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('should handle errors during the database operation', async () => {
+      // Simulate that an error occurs during the insert operation
+      directiveGroupRepo.manager.createQueryBuilder().getOne.mockResolvedValue(null);
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Group ID
+
+      // Mock an error during the insert operation
+      queryRunner.manager.createQueryBuilder().execute.mockRejectedValue(new Error('Database Error'));
+
+      try {
+        await service.create(mockCreateSwitchDirectiveDto);
+      } catch (error) {
+        expect(error.message).toBe('Database Error');
+        expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
       }
- 
-      await queryRunner.commitTransaction();
- 
-      return {
-        message: 'Switch directive saved successfully',
-        status: HttpStatus.CREATED,
-      };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      logger.error(`Unable to add switch directive => ${error.message}`);
- 
-      throw new HttpException(
-        { message: error.message },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    } finally {
-      await queryRunner.release();
-    }
-  }
- let createSwitchDirectiveDto: CreateSwitchDirectiveDto = {
-      group_name: 'test-009',
-      assigned_mgr: 'test',
-      teams: ['134', '1431'],
-      elements: [134, 14, 31241, 234],
-      created_by: 'test',
-    };
+    });
+
+    it('should properly handle transaction rollback in case of failure', async () => {
+      // Simulate that the group name does not exist and mock successful group ID retrieval
+      directiveGroupRepo.manager.createQueryBuilder().getOne.mockResolvedValue(null);
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]);
+
+      // Simulate failure during element insertion
+      queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Mapping ID
+      queryRunner.manager.createQueryBuilder().execute.mockRejectedValueOnce(new Error('Element Insert Error'));
+
+      try {
+        await service.create(mockCreateSwitchDirectiveDto);
+      } catch (error) {
+        expect(error.message).toBe('Element Insert Error');
+        expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+      }
+    });
+  });
