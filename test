@@ -1,5 +1,21 @@
 Write a detailed unit test for a function in a Node.js application that interacts with a database using an ORM. Use Jest as the testing framework.
+Generate detailed test cases for a NestJS application that uses TypeORM for database operations. The test cases should cover the following scenarios:
 
+Basic CRUD Operations:
+Test creating, reading, updating, and deleting an entity using TypeORM within a NestJS service.
+Ensure that the correct data is saved, updated, and deleted from the database.
+Transaction Handling with QueryRunner:
+Test using QueryRunner to manage transactions for multiple operations (e.g., saving, updating, or deleting entities within a transaction).
+Ensure that the transaction commits if all operations are successful and rolls back in case of an error.
+Repository Integration:
+Test the interaction with TypeORM’s repository (e.g., find, findOne, save, delete).
+Ensure that the repository methods work as expected when performing database queries and modifications.
+Custom Query Testing:
+Test executing custom SQL queries with the query method provided by TypeORM and check the results.
+Error Handling:
+Test for proper error handling in cases such as when an entity is not found, validation fails, or a query throws an error.
+Edge Cases:
+Test edge cases, such as saving entities with missing required fields or attempting to update non-existent entities.
 async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
   return await this.DirectiveGroupEntityRepository.manager.transaction(
     async (transactionalEntityManager) => {
