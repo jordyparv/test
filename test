@@ -1,3 +1,17 @@
+jest.spyOn(directiveGroupRepo.manager, 'createQueryBuilder').mockReturnValue({
+  // Mock the getOne method to return null (i.e., no existing group)
+  getOne: mockGetOne, 
+
+  // Mock the insert method to return itself for method chaining
+  insert: jest.fn().mockReturnThis(), 
+
+  // Mock execute to return a success response
+  execute: mockExecute
+});
+
+
+
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { SwitchDirectiveService } from './switch-directive.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
