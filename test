@@ -1,4 +1,77 @@
-  mockRepository = {
+import { Test, TestingModule } from '@nestjs/testing';
+import { UserService } from './user.service';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+
+describe('UserService', () => {
+  let service: UserService;
+  let userRepository: jest.Mocked<Repository<User>>;
+  let queryRunner: any;
+
+  beforeEach(async () => {
+    // Mock QueryRunner
+    queryRunner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        create: jest.fn(),
+        save: jest.fn(),
+      },
+    };
+
+    // Mock Repository
+    userRepository = {
+      manager: {
+        connection: {
+          createQueryRunner: jest.fn().mockReturnValue(queryRunner),
+        },
+      },
+    } as unknown as jest.Mocked<Repository<User>>;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UserService,
+        { provide: getRepositoryToken(User), useValue: userRepository },
+      ],
+    }).compile();
+
+    service = module.get<UserService>(UserService);
+  });
+
+  it('should create a user within a transaction', async () => {
+    const userData = { name: 'John Doe' };
+    const createdUser = { id: 1, ...userData };
+
+    queryRunner.manager.create.mockReturnValue(createdUser);
+    queryRunner.manager.save.mockResolvedValue(createdUser);
+
+    const result = await service.createUserWithTransaction(userData);
+
+    expect(queryRunner.connect).toHaveBeenCalled();
+    expect(queryRunner.startTransaction).toHaveBeenCalled();
+    expect(queryRunner.manager.create).toHaveBeenCalledWith(User, userData);
+    expect(queryRunner.manager.save).toHaveBeenCalledWith(createdUser);
+    expect(queryRunner.commitTransaction).toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalled();
+    expect(result).toEqual(createdUser);
+  });
+
+  it('should rollback transaction on error', async () => {
+    queryRunner.manager.save.mockRejectedValue(new Error('DB Error'));
+
+    await expect(service.createUserWithTransaction({ name: 'John Doe' })).rejects.toThrow('DB Error');
+
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalled();
+  });
+});
+
+
+mockRepository = {
       find: jest.fn().mockResolvedValue([{ id: 1, name: 'Test Entity' }]),
       findOne: jest.fn().mockResolvedValue({ id: 1, name: 'Test Entity' }),
       save: jest.fn().mockResolvedValue({ id: 1, name: 'Saved Entity' }),
