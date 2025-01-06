@@ -1,4 +1,18 @@
- beforeEach(async () => {
+        useValue: createMock<Repository<DirectiveGroupEntity>>({
+          manager: {
+            createQueryBuilder: jest.fn().mockReturnValue({
+              getOne: jest.fn().mockResolvedValue(null), // Simulate no existing group
+              // You can mock other query builder methods as needed
+            }),
+            query: jest.fn().mockResolvedValueOnce([{ NEXTVAL: 1 }]), // Mock sequence query
+            connection: {
+              createQueryRunner: jest.fn().mockReturnValue(queryRunner), // Mocking queryRunner
+            },
+          },
+        }),
+
+
+beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SwitchDirectiveService,
