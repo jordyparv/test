@@ -1,4 +1,146 @@
+
+import { Test, TestingModule } from '@nestjs/testing';
+import { SwitchDirectiveService } from './switch-directive.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DirectiveGroupEntity } from './entities/DirectiveGroupEntity';
+import { DirectiveUserGroupMappingEntity } from './entities/DirectiveUserGroupMappingEntity';
+import { DirectiveElementGroupMappingEntity } from './entities/DirectiveElementGroupMappingEntity';
+import { HttpException, HttpStatus } from '@nestjs/common';
+import { createMock } from '@golevelup/ts-jest';
+
+let service: SwitchDirectiveService;
+let directiveGroupRepo: Repository<DirectiveGroupEntity>;
+let directiveUserGroupMappingRepo: Repository<DirectiveUserGroupMappingEntity>;
+let queryRunner: any;
+let mockCreateSwitchDirectiveDto: any;
+
+beforeEach(async () => {
+  // Create the mock DTO
+  mockCreateSwitchDirectiveDto = {
+    group_name: 'Test Group',
+    created_by: 'admin',
+    assigned_mgr: 'manager1',
+    teams: ['team1', 'team2'],
+    elements: [101, 102, 103],
+  };
+
+  // Mock the queryRunner and repository methods
+  queryRunner = {
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        getOne: jest.fn().mockResolvedValue(null), // Simulate no existing group found
+        insert: jest.fn().mockReturnThis(), // Allow chaining
+        execute: jest.fn().mockResolvedValue({ affected: 1 }), // Simulate successful insert
+      }),
+      query: jest.fn().mockResolvedValueOnce([{ NEXTVAL: 1 }]), // Mock sequence value for group ID
+    },
+  };
+
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      SwitchDirectiveService,
+      {
+        provide: getRepositoryToken(DirectiveGroupEntity),
         useValue: createMock<Repository<DirectiveGroupEntity>>({
+          manager: {
+            createQueryBuilder: jest.fn().mockReturnValue({
+              getOne: jest.fn().mockResolvedValue(null), // Simulate no existing group
+            }),
+            query: jest.fn().mockResolvedValueOnce([{ NEXTVAL: 1 }]), // Mock sequence query for group ID
+          },
+        }),
+      },
+      {
+        provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
+        useValue: createMock<Repository<DirectiveUserGroupMappingEntity>>(),
+      },
+      {
+        provide: getRepositoryToken(DirectiveElementGroupMappingEntity),
+        useValue: createMock<Repository<DirectiveElementGroupMappingEntity>>(),
+      },
+    ],
+  }).compile();
+
+  service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
+  directiveGroupRepo = module.get<Repository<DirectiveGroupEntity>>(getRepositoryToken(DirectiveGroupEntity));
+  directiveUserGroupMappingRepo = module.get<Repository<DirectiveUserGroupMappingEntity>>(getRepositoryToken(DirectiveUserGroupMappingEntity));
+
+  // Spying on the methods of queryRunner
+  jest.spyOn(queryRunner, 'startTransaction');
+  jest.spyOn(queryRunner, 'commitTransaction');
+  jest.spyOn(queryRunner, 'rollbackTransaction');
+  jest.spyOn(queryRunner, 'release');
+  jest.spyOn(queryRunner.manager, 'createQueryBuilder').mockReturnValue({
+    getOne: jest.fn().mockResolvedValue(null), // No existing group
+    insert: jest.fn().mockReturnThis(), // Chaining insert
+    execute: jest.fn().mockResolvedValue({ affected: 1 }), // Simulate successful insert
+  });
+  jest.spyOn(queryRunner.manager, 'query').mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Mock sequence value
+});
+
+it('should successfully create a switch directive', async () => {
+  // Mock query results for group, mapping, and element IDs
+  queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Group ID
+  queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Mapping ID
+  queryRunner.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]); // Element Mapping ID
+
+  // Mock successful insert operation
+  directiveGroupRepo.manager.createQueryBuilder().execute.mockResolvedValue({ affected: 1 });
+
+  const result = await service.create(mockCreateSwitchDirectiveDto);
+
+  // Verify that the method returned the expected response
+  expect(result.message).toBe('Switch directive saved successfully');
+  expect(result.status).toBe(HttpStatus.CREATED);
+
+  // Verify that the transaction methods were called
+  expect(queryRunner.startTransaction).toHaveBeenCalled();
+  expect(queryRunner.commitTransaction).toHaveBeenCalled();
+  expect(queryRunner.release).toHaveBeenCalled();
+
+  // Verify that createQueryBuilder was called correctly
+  expect(queryRunner.manager.createQueryBuilder).toHaveBeenCalledTimes(3); // Three calls: one for group, one for mapping, one for elements
+  expect(queryRunner.manager.createQueryBuilder).toHaveBeenCalledWith('INSERT INTO DirectiveGroupEntity');
+  expect(queryRunner.manager.createQueryBuilder).toHaveBeenCalledWith('INSERT INTO DirectiveUserGroupMappingEntity');
+  expect(queryRunner.manager.createQueryBuilder).toHaveBeenCalledWith('INSERT INTO DirectiveElementGroupMappingEntity');
+});
+
+it('should throw an error when group name already exists', async () => {
+  // Mocking an existing group
+  queryRunner.manager.createQueryBuilder().getOne.mockResolvedValue({ GROUP_ID: 1 });
+
+  try {
+    await service.create(mockCreateSwitchDirectiveDto);
+  } catch (error) {
+    expect(error).toBeInstanceOf(HttpException);
+    expect(error.response.message).toBe('Group name already exists');
+    expect(error.response.status).toBe(HttpStatus.BAD_REQUEST);
+  }
+
+  // Verify that rollback is called when an error occurs
+  expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+useValue: createMock<Repository<DirectiveGroupEntity>>({
           manager: {
             createQueryBuilder: jest.fn().mockReturnValue({
               getOne: jest.fn().mockResolvedValue(null), // Simulate no existing group
