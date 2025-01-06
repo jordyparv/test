@@ -1,4 +1,73 @@
-  async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
+ beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SwitchDirectiveService,
+        {
+          provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
+          useValue: createMock<Repository<DirectiveUserGroupMappingEntity>>(),
+        },
+        {
+          provide: getRepositoryToken(DirectiveGroupEntity),
+          useValue: createMock<Repository<DirectiveGroupEntity>>(),
+        },
+        {
+          provide: getRepositoryToken(DirectiveElementGroupMappingEntity),
+          useValue:
+            createMock<Repository<DirectiveElementGroupMappingEntity>>(),
+        },
+        {
+          provide: getRepositoryToken(SecContactEntity),
+          useClass: Repository,
+        },
+        {
+          provide: getRepositoryToken(SwitchElementEntity),
+          useClass: Repository,
+        },
+        {
+          provide: getRepositoryToken(SecUsersEntity),
+          useClass: Repository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
+    directiveUserGroupMappingRepo = module.get<
+      Repository<DirectiveUserGroupMappingEntity>
+    >(getRepositoryToken(DirectiveUserGroupMappingEntity));
+    directiveGroupRepo = module.get<Repository<DirectiveGroupEntity>>(
+      getRepositoryToken(DirectiveGroupEntity),
+    );
+    directiveElementGroupMappingRepo = module.get<
+      Repository<DirectiveElementGroupMappingEntity>
+    >(getRepositoryToken(DirectiveElementGroupMappingEntity));
+    secContactRepo = module.get<Repository<SecContactEntity>>(
+      getRepositoryToken(SecContactEntity),
+    );
+    switchElementRepo = module.get<Repository<SwitchElementEntity>>(
+      getRepositoryToken(SwitchElementEntity),
+    );
+    secUsersRepo = module.get<Repository<SecUsersEntity>>(
+      getRepositoryToken(SecUsersEntity),
+    );
+    queryRunner = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        createQueryBuilder: jest.fn(),
+        query: jest.fn(),
+        connection: {
+          createQueryRunner: jest.fn().mockReturnValue(queryRunner),
+        },
+      }
+    }
+  });
+
+
+
+
+async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
     const queryRunner =
       this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
     await queryRunner.startTransaction();
