@@ -1,113 +1,116 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UserService } from './user.service';
-import { Repository } from 'typeorm';
-import { User } from './user.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
 
-describe('UserService', () => {
-  let service: UserService;
-  let userRepository: jest.Mocked<Repository<User>>;
-  let queryRunner: any;
+  async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
+    const queryRunner =
+      this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
+    await queryRunner.startTransaction();
 
-  beforeEach(async () => {
-    // Mock QueryRunner
-    queryRunner = {
-      connect: jest.fn(),
-      startTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
-      release: jest.fn(),
-      manager: {
-        create: jest.fn(),
-        save: jest.fn(),
-      },
-    };
+    try {
+      const existingGroup = await queryRunner.manager
+        .createQueryBuilder()
+        .select('g.GROUP_ID')
+        .from(DirectiveGroupEntity, 'g')
+        .where('g.GROUP_NAME = :groupName', {
+          groupName: createSwitchDirectiveDto.group_name,
+        })
+        .getOne();
 
-    // Mock Repository
-    userRepository = {
-      manager: {
-        connection: {
-          createQueryRunner: jest.fn().mockReturnValue(queryRunner),
-        },
-      },
-    } as unknown as jest.Mocked<Repository<User>>;
+      if (existingGroup) {
+        throw new HttpException(
+          {
+            message: 'Group name already exists',
+            status: HttpStatus.BAD_REQUEST,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserService,
-        { provide: getRepositoryToken(User), useValue: userRepository },
-      ],
-    }).compile();
+      const groupIdQuery = await queryRunner.manager.query(
+        'SELECT DIRECTIVE_GROUP_SEQ.NEXTVAL FROM dual',
+      );
+      const groupId = groupIdQuery[0]?.NEXTVAL;
 
-    service = module.get<UserService>(UserService);
-  });
+      await queryRunner.manager
+        .createQueryBuilder()
+        .insert()
+        .into(DirectiveGroupEntity)
+        .values({
+          GROUP_NAME: createSwitchDirectiveDto.group_name,
+          GROUP_ID: groupId,
+          META_CREATED_BY: createSwitchDirectiveDto.created_by,
+          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+        })
+        .execute();
 
-  it('should create a user within a transaction', async () => {
-    const userData = { name: 'John Doe' };
-    const createdUser = { id: 1, ...userData };
+      const mappingIdQuery = await queryRunner.manager.query(
+        'SELECT DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
+      );
+      const mappingId = mappingIdQuery[0]?.NEXTVAL;
 
-    queryRunner.manager.create.mockReturnValue(createdUser);
-    queryRunner.manager.save.mockResolvedValue(createdUser);
+      await queryRunner.manager
+        .createQueryBuilder()
+        .insert()
+        .into(DirectiveUserGroupMappingEntity)
+        .values({
+          MAPPING_ID: mappingId,
+          USER_ID: createSwitchDirectiveDto.assigned_mgr,
+          GROUP_ID: groupId,
+          META_CREATED_BY: createSwitchDirectiveDto.created_by,
+          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          ASSIGNED_TEAM: createSwitchDirectiveDto.teams
+            ? createSwitchDirectiveDto.teams.join(',')
+            : '',
+        })
+        .execute();
 
-    const result = await service.createUserWithTransaction(userData);
+      if (createSwitchDirectiveDto.elements?.length) {
+        const elementsToInsert = await Promise.all(
+          createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
+            const elementMappingIdQuery = await queryRunner.manager.query(
+              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
+            );
+            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
 
-    expect(queryRunner.connect).toHaveBeenCalled();
-    expect(queryRunner.startTransaction).toHaveBeenCalled();
-    expect(queryRunner.manager.create).toHaveBeenCalledWith(User, userData);
-    expect(queryRunner.manager.save).toHaveBeenCalledWith(createdUser);
-    expect(queryRunner.commitTransaction).toHaveBeenCalled();
-    expect(queryRunner.release).toHaveBeenCalled();
-    expect(result).toEqual(createdUser);
-  });
+            return {
+              ELEMENT_MAPPING_ID: elementMappingId,
+              GROUP_ID: groupId,
+              ELEMENT_ID,
+              META_CREATED_BY: createSwitchDirectiveDto.created_by,
+              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+              META_LAST_UPDATED_DATE: () =>
+                'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            };
+          }),
+        );
 
-  it('should rollback transaction on error', async () => {
-    queryRunner.manager.save.mockRejectedValue(new Error('DB Error'));
+        await queryRunner.manager
+          .createQueryBuilder()
+          .insert()
+          .into(DirectiveElementGroupMappingEntity)
+          .values(elementsToInsert)
+          .execute();
+      }
 
-    await expect(service.createUserWithTransaction({ name: 'John Doe' })).rejects.toThrow('DB Error');
+      await queryRunner.commitTransaction();
 
-    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
-    expect(queryRunner.release).toHaveBeenCalled();
-  });
-});
+      return {
+        message: 'Switch directive saved successfully',
+        status: HttpStatus.CREATED,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      logger.error(`Unable to add switch directive => ${error.message}`);
 
-
-mockRepository = {
-      find: jest.fn().mockResolvedValue([{ id: 1, name: 'Test Entity' }]),
-      findOne: jest.fn().mockResolvedValue({ id: 1, name: 'Test Entity' }),
-      save: jest.fn().mockResolvedValue({ id: 1, name: 'Saved Entity' }),
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
-      remove: jest.fn().mockResolvedValue({ affected: 1 }),
-      delete: jest.fn().mockResolvedValue({ affected: 1 }),
-      count: jest.fn().mockResolvedValue(5),
-      query: jest.fn().mockResolvedValue([{ id: 1, name: 'Test Entity' }]),
-      increment: jest.fn().mockResolvedValue({ affected: 1 }),
-      decrement: jest.fn().mockResolvedValue({ affected: 1 }),
-      clear: jest.fn().mockResolvedValue(undefined),
-    };
-
-    mockEntityManager = {
-      save: jest.fn().mockResolvedValue({ id: 1, name: 'Saved Entity' }),
-      remove: jest.fn().mockResolvedValue({ affected: 1 }),
-      transaction: jest.fn().mockImplementation(async (cb) => await cb(mockEntityManager)),
-      clear: jest.fn().mockResolvedValue(undefined),
-      increment: jest.fn().mockResolvedValue({ affected: 1 }),
-      decrement: jest.fn().mockResolvedValue({ affected: 1 }),
-    };
-
-    mockConnection = {
-      getRepository: jest.fn().mockReturnValue(mockRepository),
-      startTransaction: jest.fn().mockResolvedValue(undefined),
-      commitTransaction: jest.fn().mockResolvedValue(undefined),
-      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
-      release: jest.fn().mockResolvedValue(undefined),
-      manager: mockEntityManager, // Associate the manager with the connection
-    };
-
- {
-          provide: Connection,
-          useValue: mockConnection,
-        },
-        {
-          provide: EntityManager,
-          useValue: mockEntityManager,
-        },
+      throw new HttpException(
+        { message: error.message },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+ 
