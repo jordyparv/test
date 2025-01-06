@@ -1,3 +1,5 @@
+Write a detailed unit test for a function in a Node.js application that interacts with a database using an ORM. Use Jest as the testing framework.
+
 async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
   return await this.DirectiveGroupEntityRepository.manager.transaction(
     async (transactionalEntityManager) => {
