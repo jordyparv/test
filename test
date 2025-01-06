@@ -1,26 +1,31 @@
-export type MockType<T> = {
-    [P in keyof T]?: jest.Mock<unknown>;
-};
+  mockRepository = {
+      find: jest.fn().mockResolvedValue([{ id: 1, name: 'Test Entity' }]),
+      findOne: jest.fn().mockResolvedValue({ id: 1, name: 'Test Entity' }),
+      save: jest.fn().mockResolvedValue({ id: 1, name: 'Saved Entity' }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      remove: jest.fn().mockResolvedValue({ affected: 1 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      count: jest.fn().mockResolvedValue(5),
+      query: jest.fn().mockResolvedValue([{ id: 1, name: 'Test Entity' }]),
+      increment: jest.fn().mockResolvedValue({ affected: 1 }),
+      decrement: jest.fn().mockResolvedValue({ affected: 1 }),
+      clear: jest.fn().mockResolvedValue(undefined),
+    };
 
-export class MockFactory {
-    static getMock<T>(type: new (...args: any[]) => T, includes?: string[]): MockType<T> {
-        const mock: MockType<T> = {};
+    mockEntityManager = {
+      save: jest.fn().mockResolvedValue({ id: 1, name: 'Saved Entity' }),
+      remove: jest.fn().mockResolvedValue({ affected: 1 }),
+      transaction: jest.fn().mockImplementation(async (cb) => await cb(mockEntityManager)),
+      clear: jest.fn().mockResolvedValue(undefined),
+      increment: jest.fn().mockResolvedValue({ affected: 1 }),
+      decrement: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
 
-        Object.getOwnPropertyNames(type.prototype)
-            .filter((key: string) => key !== 'constructor' && (!includes || includes.includes(key)))
-            .map((key: string) => {
-                mock[key] = jest.fn();
-            });
-
-        return mock;
-    }
-}
-
-const module: TestingModule = await Test.createTestingModule({
-    providers: [
-        {
-            provide: getRepositoryToken(MyCustomRepository),
-            useValue: MockFactory.getMock(MyCustomRepository)
-        }
-    ]
-}).compile();
+    mockConnection = {
+      getRepository: jest.fn().mockReturnValue(mockRepository),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      manager: mockEntityManager, // Associate the manager with the connection
+    };
