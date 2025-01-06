@@ -1,16 +1,24 @@
- ● should successfully create a switch directive
+// Create a mock of the queryRunner, with all necessary methods
+const mockQueryRunner = {
+  startTransaction: jest.fn(),
+  commitTransaction: jest.fn(),
+  rollbackTransaction: jest.fn(),
+  release: jest.fn(),
+  manager: {
+    createQueryBuilder: jest.fn().mockReturnValue({
+      getOne: jest.fn().mockResolvedValue(null), // Mock getOne to simulate no existing group
+      insert: jest.fn().mockReturnThis(), // Allow method chaining for insert
+      execute: jest.fn().mockResolvedValue({ affected: 1, generatedMaps: [] }) // Simulate successful execution
+    }),
+    query: jest.fn().mockResolvedValueOnce([{ NEXTVAL: 1 }]) // Simulate query returning nextval for sequence
+  }
+};
 
-    TypeError: Cannot read properties of undefined (reading 'createQueryRunner')
+// Mock the connection's createQueryRunner method
+jest.spyOn(directiveGroupRepo.manager.connection, 'createQueryRunner').mockReturnValue(mockQueryRunner);
 
-      253 |   async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
-      254 |     const queryRunner =
-    > 255 |       this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
-          |                                                              ^
-      256 |     await queryRunner.startTransaction();
-      257 |
-      258 |     try {
-
-
+// Mock the manager object itself
+jest.spyOn(directiveGroupRepo, 'manager', 'get').mockReturnValue(mockQueryRunner.manager);
 
 
 
