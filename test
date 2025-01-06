@@ -1,3 +1,273 @@
+async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
+  return await this.DirectiveGroupEntityRepository.manager.transaction(
+    async (transactionalEntityManager) => {
+      // Check if group already exists
+      const existingGroup = await transactionalEntityManager
+        .createQueryBuilder()
+        .select('g.GROUP_ID')
+        .from(DirectiveGroupEntity, 'g')
+        .where('g.GROUP_NAME = :groupName', {
+          groupName: createSwitchDirectiveDto.group_name,
+        })
+        .getOne();
+
+      if (existingGroup) {
+        throw new HttpException(
+          {
+            message: 'Group name already exists',
+            status: HttpStatus.BAD_REQUEST,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Get next group ID
+      const groupIdQuery = await transactionalEntityManager.query(
+        'SELECT DIRECTIVE_GROUP_SEQ.NEXTVAL FROM dual',
+      );
+      const groupId = groupIdQuery[0]?.NEXTVAL;
+
+      // Insert the group
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .insert()
+        .into(DirectiveGroupEntity)
+        .values({
+          GROUP_NAME: createSwitchDirectiveDto.group_name,
+          GROUP_ID: groupId,
+          META_CREATED_BY: createSwitchDirectiveDto.created_by,
+          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+        })
+        .execute();
+
+      // Get next mapping ID
+      const mappingIdQuery = await transactionalEntityManager.query(
+        'SELECT DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
+      );
+      const mappingId = mappingIdQuery[0]?.NEXTVAL;
+
+      // Insert user group mapping
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .insert()
+        .into(DirectiveUserGroupMappingEntity)
+        .values({
+          MAPPING_ID: mappingId,
+          USER_ID: createSwitchDirectiveDto.assigned_mgr,
+          GROUP_ID: groupId,
+          META_CREATED_BY: createSwitchDirectiveDto.created_by,
+          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          ASSIGNED_TEAM: createSwitchDirectiveDto.teams
+            ? createSwitchDirectiveDto.teams.join(',')
+            : '',
+        })
+        .execute();
+
+      // Insert elements if provided
+      if (createSwitchDirectiveDto.elements?.length) {
+        const elementsToInsert = await Promise.all(
+          createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
+            const elementMappingIdQuery = await transactionalEntityManager.query(
+              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
+            );
+            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
+
+            return {
+              ELEMENT_MAPPING_ID: elementMappingId,
+              GROUP_ID: groupId,
+              ELEMENT_ID,
+              META_CREATED_BY: createSwitchDirectiveDto.created_by,
+              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+              META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            };
+          }),
+        );
+
+        await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(DirectiveElementGroupMappingEntity)
+          .values(elementsToInsert)
+          .execute();
+      }
+
+      return {
+        message: 'Switch directive saved successfully',
+        status: HttpStatus.CREATED,
+      };
+    },
+  );
+}
+
+
+
+
+
+
+
+
+
+import { Test, TestingModule } from '@nestjs/testing';
+import { SwitchDirectiveService } from './switch-directive.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { DirectiveGroupEntity } from './entities/DirectiveGroupEntity';
+import { DirectiveUserGroupMappingEntity } from './entities/DirectiveUserGroupMappingEntity';
+import { DirectiveElementGroupMappingEntity } from './entities/DirectiveElementGroupMappingEntity';
+import { HttpException, HttpStatus } from '@nestjs/common';
+import { CreateSwitchDirectiveDto } from './dto/create-switch-directive.dto';
+
+jest.mock('@nestjs/typeorm'); // Mock the repository methods
+
+describe('SwitchDirectiveService', () => {
+  let service: SwitchDirectiveService;
+  let directiveGroupRepo;
+  let directiveUserGroupMappingRepo;
+  let directiveElementGroupMappingRepo;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SwitchDirectiveService,
+        {
+          provide: getRepositoryToken(DirectiveGroupEntity),
+          useValue: {
+            manager: {
+              transaction: jest.fn(),
+              createQueryBuilder: jest.fn(),
+              query: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
+          useValue: {
+            manager: {
+              createQueryBuilder: jest.fn(),
+              query: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: getRepositoryToken(DirectiveElementGroupMappingEntity),
+          useValue: {
+            manager: {
+              createQueryBuilder: jest.fn(),
+              query: jest.fn(),
+            },
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
+    directiveGroupRepo = module.get(getRepositoryToken(DirectiveGroupEntity));
+    directiveUserGroupMappingRepo = module.get(getRepositoryToken(DirectiveUserGroupMappingEntity));
+    directiveElementGroupMappingRepo = module.get(getRepositoryToken(DirectiveElementGroupMappingEntity));
+  });
+
+  it('should successfully create a switch directive', async () => {
+    const mockCreateSwitchDirectiveDto: CreateSwitchDirectiveDto = {
+      group_name: 'Test Group',
+      assigned_mgr: 1,
+      created_by: 1,
+      teams: ['Team A'],
+      elements: [101, 102],
+    };
+
+    // Mock responses for all DB queries
+    const mockTransaction = jest.fn().mockResolvedValue({
+      message: 'Switch directive saved successfully',
+      status: HttpStatus.CREATED,
+    });
+
+    directiveGroupRepo.manager.transaction.mockImplementation(mockTransaction);
+
+    // Mock createQueryBuilder and query methods
+    directiveGroupRepo.manager.createQueryBuilder.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(null), // Simulate no existing group
+      insert: jest.fn().mockReturnThis(),
+      into: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    });
+
+    directiveUserGroupMappingRepo.manager.createQueryBuilder.mockReturnValue({
+      insert: jest.fn().mockReturnThis(),
+      into: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    });
+
+    directiveElementGroupMappingRepo.manager.createQueryBuilder.mockReturnValue({
+      insert: jest.fn().mockReturnThis(),
+      into: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    });
+
+    // Mock the query method for sequences
+    directiveGroupRepo.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]);
+    directiveGroupRepo.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]);
+    directiveGroupRepo.manager.query.mockResolvedValueOnce([{ NEXTVAL: 1 }]);
+
+    const result = await service.create(mockCreateSwitchDirectiveDto);
+
+    // Test assertions
+    expect(result.message).toBe('Switch directive saved successfully');
+    expect(result.status).toBe(HttpStatus.CREATED);
+    expect(directiveGroupRepo.manager.transaction).toHaveBeenCalled();
+    expect(directiveGroupRepo.manager.createQueryBuilder).toHaveBeenCalled();
+    expect(directiveGroupRepo.manager.query).toHaveBeenCalledTimes(3); // Called three times for groupId, mappingId, and elementMappingId queries
+  });
+
+  it('should throw error if group name already exists', async () => {
+    const mockCreateSwitchDirectiveDto: CreateSwitchDirectiveDto = {
+      group_name: 'Existing Group',
+      assigned_mgr: 1,
+      created_by: 1,
+      teams: ['Team A'],
+      elements: [101, 102],
+    };
+
+    // Mock existing group to return a group
+    directiveGroupRepo.manager.createQueryBuilder.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({ GROUP_ID: 1 }), // Simulate existing group
+    });
+
+    try {
+      await service.create(mockCreateSwitchDirectiveDto);
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpException);
+      expect(e.response.message).toBe('Group name already exists');
+      expect(e.response.status).toBe(HttpStatus.BAD_REQUEST);
+    }
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Create a mock of the queryRunner, with all necessary methods
 const mockQueryRunner = {
   startTransaction: jest.fn(),
