@@ -29,3 +29,12 @@
       release: jest.fn().mockResolvedValue(undefined),
       manager: mockEntityManager, // Associate the manager with the connection
     };
+
+ {
+          provide: Connection,
+          useValue: mockConnection,
+        },
+        {
+          provide: EntityManager,
+          useValue: mockEntityManager,
+        },
