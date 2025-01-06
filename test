@@ -1,38 +1,104 @@
+async getSwitchDirective() {
+    // Step 1: Fetch the raw data
+    const rawData =
+      await this.DirectiveGroupEntityRepository.createQueryBuilder('gr')
+        .select([
+          `gr.GROUP_NAME AS "group_name"`,
+          `gr.META_CREATED_BY AS "created_by"`,
+          `TO_CHAR(TRUNC(gr.META_CREATED_DATE), 'YYYY-MM-DD') AS "created_on"`,
+          `gr.GROUP_ID AS "group_id"`,
+          `ugm.MAPPING_ID AS "mapping_id"`,
+          `ugm.ASSIGNED_TEAM AS "assigned_team"`,
+          `sc.LASTNAME || ', ' || sc.FIRSTNAME AS "assigned_to"`,
+          `ugm.USER_ID AS "manager_id"`,
+          `sele.VENDOR AS "vendor"`,
+          `sele.ELEMENT_DIVISION AS "elements_division"`,
+          `sele.ELEMENT_DEPT || ' ' || sele.ELEMENT_SUB_DEPT AS "element_dept"`,
+          `sele.ELEMENT_ID AS "element_id"`,
+        ])
+        .innerJoin(
+          DirectiveUserGroupMappingEntity,
+          'ugm',
+          'ugm.GROUP_ID = gr.GROUP_ID',
+        )
+        .innerJoin(
+          DirectiveElementGroupMappingEntity,
+          'egm',
+          'egm.GROUP_ID = gr.GROUP_ID',
+        )
+        .innerJoin(
+          SwitchElementEntity,
+          'sele',
+          'sele.ELEMENT_ID = egm.ELEMENT_ID',
+        )
+        .innerJoin(SecContactEntity, 'sc', 'sc.LOGIN_ID = ugm.USER_ID')
+        .orderBy('group_name')
+        .getRawMany();
 
+    // Step 2: Process the raw data into the desired structure
+    const groupedData = [];
 
+    for (const row of rawData) {
+      const teams = await this.SecContactEntityRepository.createQueryBuilder(
+        'sc',
+      )
+        .select([
+          `TRIM(sc.LASTNAME) || ', ' || TRIM(sc.FIRSTNAME) AS "switchtech_name"`,
+          `sc.ROLE AS "role"`,
+          `sc.LOGIN_ID AS "login_id"`,
+        ])
+        .innerJoin(SecUsersEntity, 'su',
+          'su.LOGIN_ID = sc.LOGIN_ID AND su.STATUS = :status AND UPPER(sc.ROLE) IN (:...roles)',
+          { status: 'A', roles: ['TECHNICIAN', 'SWITCH_TECHNICIAN'] })
+        .where(`LOWER(sc.MANAGER_ID) = LOWER(:login_id)`, {
+          login_id: row.manager_id,
+        })
+        .getRawMany();
+      let assigned_team_ids = row.assigned_team?.split(',')||[];
+      let assigned_team = teams?.map((item) => {
+        return {
+          switchtech_name: item.switchtech_name,
+          login_id: item.login_id,
+          role: item.role,
+          checked: assigned_team_ids.includes(item.login_id),
+        };
+      });
+      const {
+        element_id,
+        elements_division,
+        element_dept,
+        group_id,
+        vendor,
+        ...rest
+      } = row;
 
-      Iif (createSwitchDirectiveDto.elements?.length) {
-        const elementsToInsert = await Promise.all(
-          createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
-            const elementMappingIdQuery = await queryRunner.manager.query(
-              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
-            );
-            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
- 
-            return {
-              ELEMENT_MAPPING_ID: elementMappingId,
-              GROUP_ID: groupId,
-              ELEMENT_ID,
-              META_CREATED_BY: createSwitchDirectiveDto.created_by,
-              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-              META_LAST_UPDATED_DATE: () =>
-                'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-            };
-          }),
-        );
- 
-        await queryRunner.manager
-          .createQueryBuilder()
-          .insert()
-          .into(DirectiveElementGroupMappingEntity)
-          .values(elementsToInsert)
-          .execute();
+      // Find the existing group or create a new one if it doesn't exist
+      let group = groupedData.find((g) => g.group_id === group_id);
+      if (!group) {
+        group = {
+          group_id,
+          elements_division,
+          vendor,
+          ...rest,
+          assigned_team,
+          elements: [], // Initialize the elements array
+        };
+        console.log({ teams });
+        groupedData.push(group);
       }
- 
-      await queryRunner.commitTransaction();
- 
-      return {
-        message: 'Switch directive saved successfully',
-        status: HttpStatus.CREATED,
-      };
+
+      // Add the element information to the group's elements array
+      group.elements.push({
+        element_id,
+        element_name: elements_division,
+        vendor,
+        sub_element_name: element_dept,
+      });
+
+      // Update element_dept count
+      group.element_dept = `${group.elements.length} Dept`;
+    }
+
+    // Step 3: Return the grouped data
+    return groupedData;
+  }
