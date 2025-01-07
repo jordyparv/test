@@ -1,104 +1,882 @@
-async getSwitchDirective() {
-    // Step 1: Fetch the raw data
-    const rawData =
-      await this.DirectiveGroupEntityRepository.createQueryBuilder('gr')
-        .select([
-          `gr.GROUP_NAME AS "group_name"`,
-          `gr.META_CREATED_BY AS "created_by"`,
-          `TO_CHAR(TRUNC(gr.META_CREATED_DATE), 'YYYY-MM-DD') AS "created_on"`,
-          `gr.GROUP_ID AS "group_id"`,
-          `ugm.MAPPING_ID AS "mapping_id"`,
-          `ugm.ASSIGNED_TEAM AS "assigned_team"`,
-          `sc.LASTNAME || ', ' || sc.FIRSTNAME AS "assigned_to"`,
-          `ugm.USER_ID AS "manager_id"`,
-          `sele.VENDOR AS "vendor"`,
-          `sele.ELEMENT_DIVISION AS "elements_division"`,
-          `sele.ELEMENT_DEPT || ' ' || sele.ELEMENT_SUB_DEPT AS "element_dept"`,
-          `sele.ELEMENT_ID AS "element_id"`,
-        ])
-        .innerJoin(
-          DirectiveUserGroupMappingEntity,
-          'ugm',
-          'ugm.GROUP_ID = gr.GROUP_ID',
-        )
-        .innerJoin(
-          DirectiveElementGroupMappingEntity,
-          'egm',
-          'egm.GROUP_ID = gr.GROUP_ID',
-        )
-        .innerJoin(
-          SwitchElementEntity,
-          'sele',
-          'sele.ELEMENT_ID = egm.ELEMENT_ID',
-        )
-        .innerJoin(SecContactEntity, 'sc', 'sc.LOGIN_ID = ugm.USER_ID')
-        .orderBy('group_name')
-        .getRawMany();
+ async update(
+    groupId: number,
+    updateSwitchDirectiveDto: UpdateSwitchDirectiveDto,
+  ) {
+    const queryRunner =
+      this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
+    await queryRunner.startTransaction();
 
-    // Step 2: Process the raw data into the desired structure
-    const groupedData = [];
+    try {
+      // Check if the group exists
+      const existingGroup = await queryRunner.manager
+        .createQueryBuilder()
+        .select('g.GROUP_ID')
+        .from(DirectiveGroupEntity, 'g')
+        .where('g.GROUP_ID = :groupId', { groupId })
+        .getOne();
 
-    for (const row of rawData) {
-      const teams = await this.SecContactEntityRepository.createQueryBuilder(
-        'sc',
-      )
-        .select([
-          `TRIM(sc.LASTNAME) || ', ' || TRIM(sc.FIRSTNAME) AS "switchtech_name"`,
-          `sc.ROLE AS "role"`,
-          `sc.LOGIN_ID AS "login_id"`,
-        ])
-        .innerJoin(SecUsersEntity, 'su',
-          'su.LOGIN_ID = sc.LOGIN_ID AND su.STATUS = :status AND UPPER(sc.ROLE) IN (:...roles)',
-          { status: 'A', roles: ['TECHNICIAN', 'SWITCH_TECHNICIAN'] })
-        .where(`LOWER(sc.MANAGER_ID) = LOWER(:login_id)`, {
-          login_id: row.manager_id,
-        })
-        .getRawMany();
-      let assigned_team_ids = row.assigned_team?.split(',')||[];
-      let assigned_team = teams?.map((item) => {
-        return {
-          switchtech_name: item.switchtech_name,
-          login_id: item.login_id,
-          role: item.role,
-          checked: assigned_team_ids.includes(item.login_id),
-        };
-      });
-      const {
-        element_id,
-        elements_division,
-        element_dept,
-        group_id,
-        vendor,
-        ...rest
-      } = row;
-
-      // Find the existing group or create a new one if it doesn't exist
-      let group = groupedData.find((g) => g.group_id === group_id);
-      if (!group) {
-        group = {
-          group_id,
-          elements_division,
-          vendor,
-          ...rest,
-          assigned_team,
-          elements: [], // Initialize the elements array
-        };
-        console.log({ teams });
-        groupedData.push(group);
+      if (!existingGroup) {
+        throw new HttpException(
+          {
+            message: 'Group not found',
+            status: HttpStatus.NOT_FOUND,
+          },
+          HttpStatus.NOT_FOUND,
+        );
       }
 
-      // Add the element information to the group's elements array
-      group.elements.push({
-        element_id,
-        element_name: elements_division,
-        vendor,
-        sub_element_name: element_dept,
+      // Update the DirectiveGroupEntity
+      await queryRunner.manager
+        .createQueryBuilder()
+        .update(DirectiveGroupEntity)
+        .set({
+          GROUP_NAME:
+            updateSwitchDirectiveDto.group_name || existingGroup.GROUP_NAME,
+          META_LAST_UPDATED_BY: updateSwitchDirectiveDto.updated_by,
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+        })
+        .where('GROUP_ID = :groupId', { groupId })
+        .execute();
+
+      // Update the DirectiveUserGroupMappingEntity
+      if (updateSwitchDirectiveDto.assigned_mgr) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .update(DirectiveUserGroupMappingEntity)
+          .set({
+            USER_ID: updateSwitchDirectiveDto.assigned_mgr,
+            META_LAST_UPDATED_BY: updateSwitchDirectiveDto.updated_by,
+            META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            ASSIGNED_TEAM: updateSwitchDirectiveDto.teams
+              ? updateSwitchDirectiveDto.teams.join(',')
+              : '',
+          })
+          .where('GROUP_ID = :groupId', { groupId })
+          .execute();
+      }
+
+      if (updateSwitchDirectiveDto.teams) {
+        await queryRunner.manager
+          .createQueryBuilder()
+          .update(DirectiveUserGroupMappingEntity)
+          .set({
+            META_LAST_UPDATED_BY: updateSwitchDirectiveDto.updated_by,
+            META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            ASSIGNED_TEAM: updateSwitchDirectiveDto.teams
+              ? updateSwitchDirectiveDto.teams.join(',')
+              : '',
+          })
+          .where('GROUP_ID = :groupId', { groupId })
+          .execute();
+      }
+
+      // Handle updating elements (either update or remove old elements)
+      if (updateSwitchDirectiveDto.elements?.length) {
+        // Delete existing elements for the group
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(DirectiveElementGroupMappingEntity)
+          .where('GROUP_ID = :groupId', { groupId })
+          .execute();
+
+        // Insert updated elements
+        const elementsToInsert = await Promise.all(
+          updateSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
+            const elementMappingIdQuery = await queryRunner.manager.query(
+              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
+            );
+            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
+
+            return {
+              ELEMENT_MAPPING_ID: elementMappingId,
+              GROUP_ID: groupId,
+              ELEMENT_ID,
+              META_CREATED_BY: updateSwitchDirectiveDto.updated_by,
+              META_LAST_UPDATED_BY: updateSwitchDirectiveDto.updated_by,
+              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+              META_LAST_UPDATED_DATE: () =>
+                'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+            };
+          }),
+        );
+
+        await queryRunner.manager
+          .createQueryBuilder()
+          .insert()
+          .into(DirectiveElementGroupMappingEntity)
+          .values(elementsToInsert)
+          .execute();
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        message: 'Switch directive updated successfully',
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      logger.error(`Unable to update switch directive => ${error.message}`);
+
+      throw new HttpException(
+        { message: error.message },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+
+
+
+import { Test, TestingModule } from '@nestjs/testing';
+import { SwitchDirectiveService } from './switch.directive.service';
+import {
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DirectiveUserGroupMappingEntity } from './entities/switch.directive.entity.DirectiveUserGroupMappingEntity';
+import { DirectiveGroupEntity } from './entities/switch.directive.entity.DirectiveGroupEntity';
+import { DirectiveElementGroupMappingEntity } from './entities/switch.directive.entity.DirectiveElementGroupMappingEntity';
+import { SecContactEntity } from './entities/switch.directive.entity.SecContactEntity';
+import { SwitchElementEntity } from './entities/switch.directive.entity.SwitchElementEntity';
+import { SecUsersEntity } from './entities/switch.directive.entity.SecUsersEntity';
+import { CreateSwitchDirectiveDto } from './dto/create.SwitchDirective.dto';
+import { SecRolesEntity } from './entities/switch.directive.entity.SecRolesEntity';
+import { createMock } from '@golevelup/ts-jest';
+import { UpdateSwitchDirectiveDto } from './dto/update.SwitchDirective.dto';
+
+describe('SwitchDirectiveService', () => {
+  let service: SwitchDirectiveService;
+  let directiveUserGroupMappingRepo: Repository<DirectiveUserGroupMappingEntity>;
+  let directiveGroupRepo: jest.Mocked<Repository<DirectiveGroupEntity>>;
+  let directiveElementGroupMappingRepo: Repository<DirectiveElementGroupMappingEntity>;
+  let secContactRepo: Repository<SecContactEntity>;
+  let secContactRepo2: jest.Mocked<Repository<SecContactEntity>>;
+  let switchElementRepo: Repository<SwitchElementEntity>;
+  let secUsersRepo: Repository<SecUsersEntity>;
+  let queryRunner: any;
+  let mockQueryBuilder: any;
+  let mockQueryRunner: any;
+  let mockQueryRunner2: any;
+  beforeEach(async () => {
+    // Mock QueryRunner
+    mockQueryRunner = {
+      manager: {
+        createQueryBuilder: jest.fn(),
+        query: jest.fn(),
+      },
+      createQueryBuilder: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+    };
+
+    queryRunner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        createQueryBuilder: jest.fn().mockReturnValue(queryRunner),
+        create: jest.fn(),
+        save: jest.fn(),
+        insert: jest.fn(),
+        getOne: jest.fn(),
+      },
+    };
+
+    // Mock Repository
+    directiveGroupRepo = {
+      manager: {
+        connection: { createQueryRunner: jest.fn(() => mockQueryRunner) },
+      },
+      createQueryBuilder: jest.fn(() => mockQueryRunner),
+    } as unknown as jest.Mocked<Repository<DirectiveGroupEntity>>;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SwitchDirectiveService,
+        {
+          provide: getRepositoryToken(DirectiveUserGroupMappingEntity),
+          useValue: createMock<Repository<DirectiveUserGroupMappingEntity>>(),
+        },
+        {
+          provide: getRepositoryToken(DirectiveGroupEntity),
+          // useValue: createMock<Repository<DirectiveGroupEntity>>(),
+          useValue: directiveGroupRepo,
+          // useValue: mockRepository,
+        },
+
+        {
+          provide: getRepositoryToken(DirectiveElementGroupMappingEntity),
+          useValue:
+            createMock<Repository<DirectiveElementGroupMappingEntity>>(),
+        },
+        {
+          provide: getRepositoryToken(SecContactEntity),
+          // useClass: Repository,
+          useValue: createMock<Repository<SecContactEntity>>(),
+        },
+
+        {
+          provide: getRepositoryToken(SwitchElementEntity),
+          useClass: Repository,
+        },
+        {
+          provide: getRepositoryToken(SecUsersEntity),
+          useClass: Repository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<SwitchDirectiveService>(SwitchDirectiveService);
+    directiveUserGroupMappingRepo = module.get<
+      Repository<DirectiveUserGroupMappingEntity>
+    >(getRepositoryToken(DirectiveUserGroupMappingEntity));
+    // directiveGroupRepo = module.get<Repository<DirectiveGroupEntity>>(
+    //   getRepositoryToken(DirectiveGroupEntity),
+    // );
+    directiveElementGroupMappingRepo = module.get<
+      Repository<DirectiveElementGroupMappingEntity>
+    >(getRepositoryToken(DirectiveElementGroupMappingEntity));
+    secContactRepo = module.get<Repository<SecContactEntity>>(
+      getRepositoryToken(SecContactEntity),
+    );
+    switchElementRepo = module.get<Repository<SwitchElementEntity>>(
+      getRepositoryToken(SwitchElementEntity),
+    );
+    secUsersRepo = module.get<Repository<SecUsersEntity>>(
+      getRepositoryToken(SecUsersEntity),
+    );
+    jest
+      .spyOn(
+        service['DirectiveGroupEntityRepository'].manager.connection,
+        'createQueryRunner',
+      )
+      .mockReturnValue(mockQueryRunner);
+
+    jest.clearAllMocks();
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+  describe('findAll', () => {
+    it('should return all DirectiveUserGroupMapping entities', async () => {
+      const mockData = [{ id: 1 }, { id: 2 }];
+      jest
+        .spyOn(directiveUserGroupMappingRepo, 'find')
+        .mockResolvedValue(mockData as any);
+
+      const result = await service.findAll();
+      expect(result).toEqual(mockData);
+      expect(directiveUserGroupMappingRepo.find).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return a DirectiveUserGroupMapping entity by MAPPING_ID', async () => {
+      const mockEntity = { id: 1 };
+      jest
+        .spyOn(directiveUserGroupMappingRepo, 'findOneBy')
+        .mockResolvedValue(mockEntity as any);
+
+      const result = await service.findOne(1);
+      expect(result).toEqual(mockEntity);
+      expect(directiveUserGroupMappingRepo.findOneBy).toHaveBeenCalledWith({
+        MAPPING_ID: 1,
+      });
+    });
+  });
+
+  describe('getSwitchDirective', () => {
+    it('should return grouped data from getSwitchDirective', async () => {
+      // Mocking the first query (rawData)
+      const rawData = [
+        {
+          group_name: 'Group1',
+          created_by: 'User1',
+          created_on: '2025-01-01',
+          group_id: '1',
+          assigned_team: 'user1,user2',
+          vendor: 'Vendor1',
+          elements_division: 'Division1',
+          element_dept: 'Dept1',
+          element_id: '101',
+        },
+        // Adding a second group with different `group_id` to test the else block
+        {
+          group_name: 'Group2',
+          created_by: 'User2',
+          created_on: '2025-02-01',
+          group_id: '2',
+          assigned_team: 'user2,user3',
+          vendor: 'Vendor2',
+          elements_division: 'Division2',
+          element_dept: 'Dept2',
+          element_id: '102',
+        },
+      ];
+
+      directiveGroupRepo.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rawData),
+      } as any);
+
+      // Mocking the second query (teams data) inside the loop
+      const teams = [
+        {
+          switchtech_name: 'Switchtech1',
+          role: 'TECHNICIAN',
+          login_id: 'user1',
+        },
+        {
+          switchtech_name: 'Switchtech2',
+          role: 'SWITCH_TECHNICIAN',
+          login_id: 'user2',
+        },
+      ];
+      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(teams),
+      } as any);
+
+      try {
+        // Call the method
+        const result = await service.getSwitchDirective();
+        expect(result).toEqual([
+          {
+            group_id: '1',
+            elements_division: 'Division1',
+            vendor: 'Vendor1',
+            group_name: 'Group1',
+            created_by: 'User1',
+            created_on: '2025-01-01',
+            assigned_team: [
+              {
+                switchtech_name: 'Switchtech1',
+                login_id: 'user1',
+                role: 'TECHNICIAN',
+                checked: true,
+              },
+              {
+                switchtech_name: 'Switchtech2',
+                login_id: 'user2',
+                role: 'SWITCH_TECHNICIAN',
+                checked: true,
+              },
+            ],
+            elements: [
+              {
+                element_id: '101',
+                element_name: 'Division1',
+                vendor: 'Vendor1',
+                sub_element_name: 'Dept1',
+              },
+            ],
+            element_dept: '1 Dept',
+          },
+          {
+            group_id: '2', // New group added to test the else block
+            elements_division: 'Division2',
+            vendor: 'Vendor2',
+            group_name: 'Group2',
+            created_by: 'User2',
+            created_on: '2025-02-01',
+            assigned_team: [
+              {
+                switchtech_name: 'Switchtech1',
+                login_id: 'user1',
+                role: 'TECHNICIAN',
+                checked: false, // Ensure this team isn't checked
+              },
+              {
+                switchtech_name: 'Switchtech2',
+                login_id: 'user2',
+                role: 'SWITCH_TECHNICIAN',
+                checked: true, // Ensure this team is checked
+              },
+            ],
+            elements: [
+              {
+                element_id: '102',
+                element_name: 'Division2',
+                vendor: 'Vendor2',
+                sub_element_name: 'Dept2',
+              },
+            ],
+            element_dept: '1 Dept', // Match the length of the elements
+          },
+        ]);
+
+        expect(directiveGroupRepo.createQueryBuilder).toHaveBeenCalledTimes(1); // Ensure first query was called once
+        expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(2); // Ensure second query was called onc
+      } catch (error) {
+        expect(error).toBe('getDirective');
+      }
+    });
+  });
+
+  describe('createSwitchDirective', () => {
+    it('should save a new switch directive successfully', async () => {
+      // Mock methods
+      let mockInsertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([{}]),
+      };
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue(null),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+
+      await mockQueryRunner.manager.query
+        .mockResolvedValueOnce([{ NEXTVAL: 1 }]) // Group ID sequence
+        .mockResolvedValueOnce([{ NEXTVAL: 2 }]) // Mapping ID sequence
+        .mockResolvedValue([{ NEXTVAL: 3 }, { NEXTVAL: 5 }, { NEXTVAL: 6 }]); // Element mapping ID sequence
+
+      const createSwitchDirectiveDto = {
+        group_name: 'Test Group',
+        created_by: 'test_user',
+        assigned_mgr: 'manager_user',
+        elements: [1, 2, 3],
+        teams: ['team1', 'team2'],
+      };
+      try {
+        const result = await service.create(createSwitchDirectiveDto);
+
+        // Assertions
+        expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+        expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+        expect(mockQueryRunner.release).toHaveBeenCalled();
+        expect(result).toEqual({
+          message: 'Switch directive saved successfully',
+          status: HttpStatus.CREATED,
+        });
+      } catch (error) {
+        expect(error).toEqual(
+          await mockQueryRunner.manager.createQueryBuilder(),
+        );
+      }
+    });
+
+    it('should throw an error if group name already exists', async () => {
+      // Mock existing group
+      let mockInsertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([{}]),
+      };
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue({ k: 1 }),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+
+      const createSwitchDirectiveDto = {
+        group_name: 'Existing Group',
+        created_by: 'test_user',
+        assigned_mgr: 'manager_user',
+        elements: [1, 2, 3],
+        teams: ['team1', 'team2'],
+      };
+
+      try {
+        await service.create(createSwitchDirectiveDto);
+      } catch (error) {
+        expect(error).toEqual(
+          new HttpException(
+            {
+              message: 'Group name already exists',
+              status: HttpStatus.BAD_REQUEST,
+            },
+            HttpStatus.BAD_REQUEST,
+          ),
+        );
+      }
+
+      // Assertions
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+
+    it('should rollback transaction on error', async () => {
+      // Mock query error
+      mockQueryRunner.manager.createQueryBuilder.mockImplementationOnce(() => {
+        throw new Error('Database error');
       });
 
-      // Update element_dept count
-      group.element_dept = `${group.elements.length} Dept`;
-    }
+      const createSwitchDirectiveDto = {
+        group_name: 'Test Group',
+        created_by: 'test_user',
+        assigned_mgr: 'manager_user',
+        elements: [1, 2, 3],
+        teams: ['team1', 'team2'],
+      };
 
-    // Step 3: Return the grouped data
-    return groupedData;
-  }
+      await expect(service.create(createSwitchDirectiveDto)).rejects.toThrow(
+        new HttpException(
+          { message: 'Database error' },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+
+      // Assertions
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+  });
+  describe('updateSwitchDirective', () => {
+    it('it should update directive ', async () => {
+      let updateSwitchDirectiveDto: UpdateSwitchDirectiveDto = {
+        group_name: 'test',
+        group_id: 12,
+        teams: ['test', 'test2'],
+        assigned_mgr: 'test',
+        elements: [123, 431243, 124],
+        updated_by: 'iop',
+      };
+
+      let mockInsertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([{}]),
+      };
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue({ group_name: 'test' }),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue({ group_name: 'test' }),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+
+      await mockQueryRunner.manager.query
+        .mockResolvedValueOnce([{ NEXTVAL: 1 }]) // Group ID sequence
+        .mockResolvedValueOnce([{ NEXTVAL: 2 }]) // Mapping ID sequence
+        .mockResolvedValue([{ NEXTVAL: 3 }, { NEXTVAL: 5 }, { NEXTVAL: 6 }]); // Element mapping ID sequence
+
+      try {
+        const result = await service.update(12, updateSwitchDirectiveDto);
+        expect(result).toEqual({
+          message: 'Switch directive updated successfully',
+          status: HttpStatus.OK,
+        });
+      } catch (error) {
+        expect(error).toEqual(
+          new HttpException(
+            {
+              message: 'Group not found',
+              status: HttpStatus.NOT_FOUND,
+            },
+            HttpStatus.NOT_FOUND,
+          ),
+        );
+      }
+    });
+    it('it should return group not exist while update', async () => {
+      let updateSwitchDirectiveDto = {
+        group_name: 'test',
+        group_id: 12,
+        teams: ['test', 'test2'],
+      };
+      let mockInsertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([{}]),
+      };
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue(null),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+      try {
+        await service.update(12, updateSwitchDirectiveDto);
+      } catch (error) {
+        expect(error).toEqual(
+          new HttpException(
+            {
+              message: 'Group not found',
+              status: HttpStatus.NOT_FOUND,
+            },
+            HttpStatus.NOT_FOUND,
+          ),
+        );
+      }
+    });
+  });
+  describe('getSwitchDirectiveMgrTeam', () => {
+    it('should throw HttpException if no manager or mapping is found', async () => {
+      jest.spyOn(directiveUserGroupMappingRepo, 'findBy').mockResolvedValue([]);
+
+      await expect(
+        service.getSwitchDirectiveMgrTeam('mgr1', 1),
+      ).rejects.toThrow(
+        new HttpException(
+          { message: 'Manager or mapping id not exist' },
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+
+      expect(directiveUserGroupMappingRepo.findBy).toHaveBeenCalledWith({
+        MAPPING_ID: 1,
+        USER_ID: 'mgr1',
+      });
+    });
+
+    it('should return team data if manager is found', async () => {
+      jest
+        .spyOn(directiveUserGroupMappingRepo, 'findBy')
+        .mockResolvedValue([{ ASSIGNED_TEAM: 'team1,team2' }] as any);
+
+      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ name: 'John Doe' }]),
+      } as any);
+
+      const result = await service.getSwitchDirectiveMgrTeam('mgr1', 1);
+      expect(result).toEqual([{ name: 'John Doe' }]);
+      expect(directiveUserGroupMappingRepo.findBy).toHaveBeenCalledWith({
+        MAPPING_ID: 1,
+        USER_ID: 'mgr1',
+      });
+      expect(secContactRepo.createQueryBuilder).toHaveBeenCalled();
+    });
+  });
+
+  describe('typeaheadManagers', () => {
+    it('should return search results when query matches', async () => {
+      const mockResults = [
+        {
+          display_name: 'Smith, John - JSmith - CELL_SWITCH_MANAGER',
+          login_id: 'JSmith',
+        },
+      ];
+
+      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(mockResults),
+      } as any);
+
+      const result = await service.typeaheadManagers('john');
+      expect(result).toEqual(mockResults);
+      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return an empty array when no matches are found', async () => {
+      jest.spyOn(secContactRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      } as any);
+
+      const result = await service.typeaheadManagers('unknown');
+      expect(result).toEqual([]);
+      expect(secContactRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getDistinctElementDivision', () => {
+    it('should return distinct element divisions', async () => {
+      const mockData = [
+        { ELEMENT_DIVISION: 'division1' },
+        { ELEMENT_DIVISION: 'division2' },
+      ];
+      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(mockData),
+      } as any);
+
+      const result = await service.getDistinctElementDivision();
+      expect(result).toEqual({ elementdivision: ['division1', 'division2'] });
+      expect(switchElementRepo.createQueryBuilder).toHaveBeenCalled();
+    });
+
+    it('should throw HttpException on query failure', async () => {
+      jest
+        .spyOn(switchElementRepo, 'createQueryBuilder')
+        .mockImplementation(() => {
+          throw new Error('Query failed');
+        });
+
+      await expect(service.getDistinctElementDivision()).rejects.toThrow(
+        new HttpException(
+          'Error while fetching distinct element divisions',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('getDistinctElementVendor', () => {
+    it('should return distinct element vendors', async () => {
+      const mockVendors = [{ VENDOR: 'Vendor1' }, { VENDOR: 'Vendor2' }];
+      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(mockVendors),
+      } as any);
+
+      const result = await service.getDistinctElementVendor();
+      expect(result).toEqual({
+        elementvendors: ['Vendor1', 'Vendor2'],
+      });
+      expect(switchElementRepo.createQueryBuilder).toHaveBeenCalledWith(
+        'switch_Elements',
+      );
+    });
+
+    it('should throw InternalServerErrorException on query failure', async () => {
+      jest.spyOn(switchElementRepo, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockRejectedValue(new Error('Query failed')),
+      } as any);
+
+      await expect(service.getDistinctElementVendor()).rejects.toThrow(
+        new InternalServerErrorException(
+          'Error while fetching distinct element vendors',
+          'Query failed',
+        ),
+      );
+    });
+  });
+
+  describe('getTechnicians', () => {
+    it('should return technicians when condition is true', async () => {
+      const mockResults = [
+        { SWITCHTECH_NAME: 'Doe, John', ROLE: 'Technician', LOGIN_ID: 'tech1' },
+      ];
+      jest.spyOn(secContactRepo, 'query').mockResolvedValue(mockResults);
+
+      const result = await service.getTechnicians('manager1', true);
+      expect(result).toEqual([
+        { switchtech_name: 'Doe, John', role: 'Technician', login_id: 'tech1' },
+      ]);
+      expect(secContactRepo.query).toHaveBeenCalledWith(expect.any(String), [
+        'manager1',
+      ]);
+    });
+
+    it('should return technicians when condition is false', async () => {
+      const mockResults = [
+        {
+          SWITCHTECH_NAME: 'Smith, Alice',
+          ROLE: 'Field Technician',
+          LOGIN_ID: 'tech2',
+        },
+      ];
+      jest.spyOn(secContactRepo, 'query').mockResolvedValue(mockResults);
+
+      const result = await service.getTechnicians('manager1', false);
+      expect(result).toEqual([
+        {
+          switchtech_name: 'Smith, Alice',
+          role: 'Field Technician',
+          login_id: 'tech2',
+        },
+      ]);
+      expect(secContactRepo.query).toHaveBeenCalledWith(expect.any(String), [
+        'manager1',
+      ]);
+    });
+
+    it('should throw an error on query failure', async () => {
+      jest
+        .spyOn(secContactRepo, 'query')
+        .mockRejectedValue(new Error('Query failed'));
+
+      await expect(service.getTechnicians('manager1', true)).rejects.toThrow(
+        new Error('Failed to fetch technician details'),
+      );
+    });
+  });
+
+  describe('getElementDetails', () => {
+    it('should return element details based on division and vendor', async () => {
+      const mockResults = [
+        { ELEMENT_DETAILS: 'Dept1 SubDept1', ELEMENT_ID: '1' },
+        { ELEMENT_DETAILS: 'Dept2 SubDept2', ELEMENT_ID: '2' },
+      ];
+      jest.spyOn(switchElementRepo, 'query').mockResolvedValue(mockResults);
+
+      const result = await service.getElementDetails('Division1', 'Vendor1');
+      expect(result).toEqual([
+        { element_details: 'Dept1 SubDept1', element_id: '1' },
+        { element_details: 'Dept2 SubDept2', element_id: '2' },
+      ]);
+      expect(switchElementRepo.query).toHaveBeenCalledWith(expect.any(String), [
+        'Division1',
+        'Vendor1',
+      ]);
+    });
+
+    it('should throw an error on query failure', async () => {
+      jest
+        .spyOn(switchElementRepo, 'query')
+        .mockRejectedValue(new Error('Query failed'));
+
+      await expect(
+        service.getElementDetails('Division1', 'Vendor1'),
+      ).rejects.toThrow(new Error('Failed to fetch element details'));
+    });
+  });
+});
