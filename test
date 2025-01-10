@@ -1,4 +1,45 @@
- async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
+these are test cases
+ mockQueryRunner = {
+      manager: {
+        createQueryBuilder: jest.fn(),
+        query: jest.fn(),
+      },
+      createQueryBuilder: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+    };
+
+
+    // Mock Repository
+    directiveGroupRepo = {
+      manager: {
+        connection: { createQueryRunner: jest.fn(() => mockQueryRunner) },
+      },
+      createQueryBuilder: jest.fn(() => mockQueryRunner),
+    } as unknown as jest.Mocked<Repository<DirectiveGroupEntity>>;
+
+let mockInsertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue([{}]),
+      };
+
+      mockQueryRunner.manager.createQueryBuilder
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue(null),
+        })
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder)
+        .mockImplementationOnce(() => mockInsertQueryBuilder);
+
+this is code 
+async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
     const queryRunner =
       this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
     await queryRunner.startTransaction();
@@ -112,4 +153,8 @@
       await queryRunner.release();
     }
   }
+
+below statements are not covered 
+ META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
+          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
  
