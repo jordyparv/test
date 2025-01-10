@@ -1,14 +1,4 @@
-mockInsertQueryBuilder.values.mockImplementation((value) => {
-  expect(value).toHaveProperty('META_CREATED_DATE');
-  expect(value).toHaveProperty('META_LAST_UPDATED_DATE');
-  expect(typeof value.META_CREATED_DATE).toBe('function');
-  expect(typeof value.META_LAST_UPDATED_DATE).toBe('function');
-  return mockInsertQueryBuilder;
-});
-
-
-
-  expect(mockInsertQueryBuilder.values).toHaveBeenCalledWith(
+expect(mockInsertQueryBuilder.values).toHaveBeenCalledWith(
     expect.objectContaining({
       GROUP_NAME: createSwitchDirectiveDto.group_name,
       GROUP_ID: expect.any(Number),
@@ -16,10 +6,25 @@ mockInsertQueryBuilder.values.mockImplementation((value) => {
       META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
       META_CREATED_DATE: expect.any(Function),
       META_LAST_UPDATED_DATE: expect.any(Function),
-    })
+    }),
   );
 
-  // Ensure the functions are invoked
-  const valueArgs = mockInsertQueryBuilder.values.mock.calls[0][0];
-  expect(valueArgs.META_CREATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
-  expect(valueArgs.META_LAST_UPDATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+  // Check the function return values
+  const valuesArg = mockInsertQueryBuilder.values.mock.calls[0][0];
+  expect(valuesArg.META_CREATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+  expect(valuesArg.META_LAST_UPDATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+
+
+
+
+
+
+mockInsertQueryBuilder.values.mockImplementation((values) => {
+  if (values.META_CREATED_DATE && typeof values.META_CREATED_DATE === 'function') {
+    expect(values.META_CREATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+  }
+  if (values.META_LAST_UPDATED_DATE && typeof values.META_LAST_UPDATED_DATE === 'function') {
+    expect(values.META_LAST_UPDATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+  }
+  return mockInsertQueryBuilder;
+});
