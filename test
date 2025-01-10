@@ -1,160 +1,25 @@
-these are test cases
- mockQueryRunner = {
-      manager: {
-        createQueryBuilder: jest.fn(),
-        query: jest.fn(),
-      },
-      createQueryBuilder: jest.fn(),
-      startTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
-      release: jest.fn(),
-    };
+mockInsertQueryBuilder.values.mockImplementation((value) => {
+  expect(value).toHaveProperty('META_CREATED_DATE');
+  expect(value).toHaveProperty('META_LAST_UPDATED_DATE');
+  expect(typeof value.META_CREATED_DATE).toBe('function');
+  expect(typeof value.META_LAST_UPDATED_DATE).toBe('function');
+  return mockInsertQueryBuilder;
+});
 
 
-    // Mock Repository
-    directiveGroupRepo = {
-      manager: {
-        connection: { createQueryRunner: jest.fn(() => mockQueryRunner) },
-      },
-      createQueryBuilder: jest.fn(() => mockQueryRunner),
-    } as unknown as jest.Mocked<Repository<DirectiveGroupEntity>>;
 
-let mockInsertQueryBuilder = {
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue([{}]),
-      };
+  expect(mockInsertQueryBuilder.values).toHaveBeenCalledWith(
+    expect.objectContaining({
+      GROUP_NAME: createSwitchDirectiveDto.group_name,
+      GROUP_ID: expect.any(Number),
+      META_CREATED_BY: createSwitchDirectiveDto.created_by,
+      META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
+      META_CREATED_DATE: expect.any(Function),
+      META_LAST_UPDATED_DATE: expect.any(Function),
+    })
+  );
 
-      mockQueryRunner.manager.createQueryBuilder
-        .mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          getOne: jest.fn().mockResolvedValue(null),
-        })
-        .mockImplementationOnce(() => mockInsertQueryBuilder)
-        .mockImplementationOnce(() => mockInsertQueryBuilder)
-        .mockImplementationOnce(() => mockInsertQueryBuilder);
-
-this is code 
-async create(createSwitchDirectiveDto: CreateSwitchDirectiveDto) {
-    const queryRunner =
-      this.DirectiveGroupEntityRepository.manager.connection.createQueryRunner();
-    await queryRunner.startTransaction();
- 
-    try {
-      const existingGroup = await queryRunner.manager
-        .createQueryBuilder()
-        .select('g.GROUP_ID')
-        .from(DirectiveGroupEntity, 'g')
-        .where('g.GROUP_NAME = :groupName', {
-          groupName: createSwitchDirectiveDto.group_name,
-        })
-        .getOne();
- 
-      if (existingGroup) {
-        throw new HttpException(
-          {
-            message: 'Group name already exists',
-            status: HttpStatus.BAD_REQUEST,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
- 
-      const groupIdQuery = await queryRunner.manager.query(
-        'SELECT DIRECTIVE_GROUP_SEQ.NEXTVAL FROM dual',
-      );
-      const groupId = groupIdQuery[0]?.NEXTVAL;
- 
-      await queryRunner.manager
-        .createQueryBuilder()
-        .insert()
-        .into(DirectiveGroupEntity)
-        .values({
-          GROUP_NAME: createSwitchDirectiveDto.group_name,
-          GROUP_ID: groupId,
-          META_CREATED_BY: createSwitchDirectiveDto.created_by,
-          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-        })
-        .execute();
- 
-      const mappingIdQuery = await queryRunner.manager.query(
-        'SELECT DIRECTIVE_USER_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
-      );
-      const mappingId = mappingIdQuery[0]?.NEXTVAL;
- 
-      await queryRunner.manager
-        .createQueryBuilder()
-        .insert()
-        .into(DirectiveUserGroupMappingEntity)
-        .values({
-          MAPPING_ID: mappingId,
-          USER_ID: createSwitchDirectiveDto.assigned_mgr,
-          GROUP_ID: groupId,
-          META_CREATED_BY: createSwitchDirectiveDto.created_by,
-          META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-          META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          ASSIGNED_TEAM: createSwitchDirectiveDto.teams
-            ? createSwitchDirectiveDto.teams.join(',')
-            : '',
-        })
-        .execute();
- 
-      if (createSwitchDirectiveDto.elements?.length) {
-        const elementsToInsert = await Promise.all(
-          createSwitchDirectiveDto.elements.map(async (ELEMENT_ID) => {
-            const elementMappingIdQuery = await queryRunner.manager.query(
-              'SELECT DIRECTIVE_ELEMENT_GROUP_MAPPING_SEQ.NEXTVAL FROM dual',
-            );
-            const elementMappingId = elementMappingIdQuery[0]?.NEXTVAL;
- 
-            return {
-              ELEMENT_MAPPING_ID: elementMappingId,
-              GROUP_ID: groupId,
-              ELEMENT_ID,
-              META_CREATED_BY: createSwitchDirectiveDto.created_by,
-              META_LAST_UPDATED_BY: createSwitchDirectiveDto.created_by,
-              META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-              META_LAST_UPDATED_DATE: () =>
-                'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-            };
-          }),
-        );
- 
-        await queryRunner.manager
-          .createQueryBuilder()
-          .insert()
-          .into(DirectiveElementGroupMappingEntity)
-          .values(elementsToInsert)
-          .execute();
-      }
- 
-      await queryRunner.commitTransaction();
- 
-      return {
-        message: 'Switch directive saved successfully',
-        status: HttpStatus.CREATED,
-      };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      logger.error(`Unable to add switch directive => ${error.message}`);
- 
-      throw new HttpException(
-        { message: error.message },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    } finally {
-      await queryRunner.release();
-    }
-  }
-
-below statements are not covered 
- META_CREATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
-          META_LAST_UPDATED_DATE: () => 'SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)',
- 
+  // Ensure the functions are invoked
+  const valueArgs = mockInsertQueryBuilder.values.mock.calls[0][0];
+  expect(valueArgs.META_CREATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
+  expect(valueArgs.META_LAST_UPDATED_DATE()).toBe('SYS_EXTRACT_UTC(CURRENT_TIMESTAMP)');
