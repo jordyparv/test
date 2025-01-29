@@ -1,7 +1,15 @@
- select sc.contact_id as "id",sc.phone as "phone",sc.email as "email",sc.title as "title",
-    alt_phone as "alt_phone",sc.login_id as "user_id",
-    sc.lastname ||', '|| sc.firstname as "user_name", sc.role as "role"
-    from sec_contact sc 
-    inner join sec_users su on su.login_id = sc.login_id and su.status = 'A'
-    where lower(trim(sc.lastname||', '||sc.firstname)) like '%'|| lower(:name) ||'%' and 
-    lower(sc.role) in (lower(:role));
+SELECT 
+    sc.contact_id AS "id",
+    sc.phone AS "phone",
+    sc.email AS "email",
+    sc.title AS "title",
+    sc.alt_phone AS "alt_phone",
+    sc.login_id AS "user_id",
+    sc.lastname || ', ' || sc.firstname AS "user_name",
+    sc.role AS "role"
+FROM sec_contact sc
+INNER JOIN sec_users su 
+    ON su.login_id = sc.login_id 
+    AND su.status = 'A'
+WHERE LOWER(TRIM(sc.lastname || ', ' || sc.firstname)) LIKE '%' || LOWER(:name) || '%'
+  AND LOWER(sc.role) IN (SELECT LOWER(role) FROM TABLE(SYS.DBMS_DEBUG_VC2COLL(:role)));
