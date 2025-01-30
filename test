@@ -1,15 +1,9 @@
-SELECT 
-    sc.contact_id AS "id",
-    sc.phone AS "phone",
-    sc.email AS "email",
-    sc.title AS "title",
-    sc.alt_phone AS "alt_phone",
-    sc.login_id AS "user_id",
-    sc.lastname || ', ' || sc.firstname AS "user_name",
-    sc.role AS "role"
-FROM sec_contact sc
-INNER JOIN sec_users su 
-    ON su.login_id = sc.login_id 
-    AND su.status = 'A'
-WHERE LOWER(TRIM(sc.lastname || ', ' || sc.firstname)) LIKE '%' || LOWER(:name) || '%'
-  AND LOWER(sc.role) IN (SELECT LOWER(role) FROM TABLE(SYS.DBMS_DEBUG_VC2COLL(:role)));
+function addSixMonthsToString(dateString) {
+  const date = new Date(dateString);  
+  date.setMonth(date.getMonth() + 6); 
+  return date.toISOString().split('T')[0];  // Convert back to string in YYYY-MM-DD format
+}
+
+const dateString = "2025-01-30";
+const newDateString = addSixMonthsToString(dateString);
+console.log(newDateString);
