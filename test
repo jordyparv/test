@@ -1,9 +1,38 @@
-function addSixMonthsToString(dateString) {
-  const date = new Date(dateString);  
-  date.setMonth(date.getMonth() + 6); 
-  return date.toISOString().split('T')[0];  // Convert back to string in YYYY-MM-DD format
-}
+ async typeaheadManagers(searchValue: string): Promise<any> {
+    const query = this.SecContactEntityRepository.createQueryBuilder('sc')
+      .select([
+        `TRIM(sc.LASTNAME) || ', ' || TRIM(sc.FIRSTNAME) || ' - ' || sc.LOGIN_ID || ' - ' || sr.ROLE_TYPE AS "display_name"`,
+        'sc.LOGIN_ID as "login_id"',
+      ])
+      .innerJoin(
+        SecUsersEntity,
+        'su',
+        'su.LOGIN_ID = sc.LOGIN_ID AND su.STATUS = :status',
+        { status: 'A' },
+      )
+      .leftJoin(SecUserRoleEntity,
+        'sur',
+        'sur.ROLE_ID = sur.ROLE_ID'
+      )
+      .innerJoin(
+        SecRolesEntity,
+        'sr',
+        'sr.ROLE_ID = sur.ROLE_ID'
+      )
+      
+      .where('UPPER(sc.ROLE) IN (:...roles)', {
+        roles: ['CELL_SWITCH_MANAGER', 'SWITCH_MANAGER'],
+      })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(sc.FIRSTNAME) LIKE :firstname', {
+            firstname: `%${searchValue.toLowerCase()}%`,
+          }).orWhere('LOWER(sc.LASTNAME) LIKE :lastname', {
+            lastname: `%${searchValue.toLowerCase()}%`,
+          });
+        }),
+      );
 
-const dateString = "2025-01-30";
-const newDateString = addSixMonthsToString(dateString);
-console.log(newDateString);
+    const results = await query.getRawMany();
+    return results;
+  }
