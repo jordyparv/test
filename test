@@ -1,38 +1,724 @@
- async typeaheadManagers(searchValue: string): Promise<any> {
-    const query = this.SecContactEntityRepository.createQueryBuilder('sc')
-      .select([
-        `TRIM(sc.LASTNAME) || ', ' || TRIM(sc.FIRSTNAME) || ' - ' || sc.LOGIN_ID || ' - ' || sr.ROLE_TYPE AS "display_name"`,
-        'sc.LOGIN_ID as "login_id"',
-      ])
-      .innerJoin(
-        SecUsersEntity,
-        'su',
-        'su.LOGIN_ID = sc.LOGIN_ID AND su.STATUS = :status',
-        { status: 'A' },
-      )
-      .leftJoin(SecUserRoleEntity,
-        'sur',
-        'sur.ROLE_ID = sur.ROLE_ID'
-      )
-      .innerJoin(
-        SecRolesEntity,
-        'sr',
-        'sr.ROLE_ID = sur.ROLE_ID'
-      )
-      
-      .where('UPPER(sc.ROLE) IN (:...roles)', {
-        roles: ['CELL_SWITCH_MANAGER', 'SWITCH_MANAGER'],
-      })
-      .andWhere(
-        new Brackets((qb) => {
-          qb.where('LOWER(sc.FIRSTNAME) LIKE :firstname', {
-            firstname: `%${searchValue.toLowerCase()}%`,
-          }).orWhere('LOWER(sc.LASTNAME) LIKE :lastname', {
-            lastname: `%${searchValue.toLowerCase()}%`,
-          });
-        }),
-      );
+All files / src/Switch/createswitch createswitch.service.ts
+14.28% Statements 18/1263.7% Branches 6/16212.5% Functions 1/814.04% Lines 17/121
+Press n or j to go to the next uncovered block, b, p or k for the previous block.
 
-    const results = await query.getRawMany();
-    return results;
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240	3x
+ 
+ 
+ 
+ 
+3x
+3x
+3x
+3x
+3x
+3x
+ 
+ 
+3x
+ 
+3x
+3x
+ 
+3x
+1x
+3x
+ 
+1x
+1x
+1x
+ 
+1x
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 	
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { cacheHelper } from "../../common/cache/cache.helper";
+import { RestClient } from "../../common/util/restClient/restClient.service";
+import { SwitchHelper } from "./../switch.helper";
+import switchRepository from "./../switch.repository";
+import { CommonUtil } from "../../common/util/common.util";
+import { Oracle } from "../../common/database/oracle";
+import { CreateSwitchDto } from "../../common/dto/createswitch.dto";
+ 
+import { constants } from "../../common/constants";
+ 
+const fetch = require("node-fetch");
+const config = require("config");
+@Injectable()
+export class CreateSwitchService {
+  public readonly logger = new Logger(CreateSwitchService.name);
+  static repo = new switchRepository(new Oracle());
+  constructor(
+    private restClient: RestClient,
+    private cache: cacheHelper,
+    private switchRepo: switchRepository
+  ) {}
+  site_helper_obj = new SwitchHelper(this?.restClient, this?.cache);
+ 
+  async createSwitch(dto: CreateSwitchDto) {
+    try {
+      const switchUnid = CommonUtil.generateMetaUniversalId();
+      let { SWITCH_CONTACTS: switch_contacts, ...switchData } = dto;
+      const insertData = {
+        ...switchData,
+        SWITCH_UNID: switchUnid,
+        SWITCH_STATUS: switchData.SWITCH_STATUS || "LIVE",
+        SWITCH_CLLI: switchData.SWITCH_CLLI || "0",
+        XING_ID: switchData.XING_ID || "0",
+        SWITCH_NETWORK_ID: switchData.SWITCH_NETWORK_ID || "0",
+        ENV_ALARMS_TESTED: switchData.ENV_ALARMS_TESTED || "1900-01-01",
+        ENV_ALARM_NEXT_TEST: CommonUtil.addSixMonthsToString(
+          switchData.ENV_ALARMS_TESTED || "1900-01-01"
+        ),
+      };
+ 
+      let techCols = [...constants.OpsTechColName];
+      let mgrCols = [...constants.OpsMgrColName];
+      let impEngCols = [...constants.OpsImpEngColName];
+      let impMgrCols = [...constants.OpsImpMgrColName];
+      let contacts = [];
+      let switch_unid = switchUnid;
+      let reverseSyncPayload = {};
+      for (let idx = 0; idx < switch_contacts.length; idx++) {
+        let contact = {
+          switch_unid,
+          role: "",
+          userid: "",
+          lname: "",
+          fname: "",
+          ops_column_name: "",
+          updated_by: "",
+        };
+ 
+        if (switch_contacts[idx].ROLE === "SWITCH_TECHNICIAN") {
+          contact.role = switch_contacts[idx].ROLE;
+          contact.userid = switch_contacts[idx].USER_ID;
+          contact.fname = switch_contacts[idx].FNAME;
+          contact.lname = switch_contacts[idx].LNAME;
+          contact.updated_by = switchData.CREATED_BY;
+          let ops_column_name = techCols.shift();
+          Iif (ops_column_name) {
+            contact.ops_column_name = ops_column_name;
+            reverseSyncPayload[ops_column_name] = switch_contacts[idx].USER_ID;
+          }
+        } else if (switch_contacts[idx].ROLE === "SWITCH_MANAGER") {
+          contact.role = switch_contacts[idx].ROLE;
+          contact.userid = switch_contacts[idx].USER_ID;
+          contact.fname = switch_contacts[idx].FNAME;
+          contact.lname = switch_contacts[idx].LNAME;
+          let ops_column_name = mgrCols.shift();
+          contact.updated_by = switchData.CREATED_BY;
+          Iif (ops_column_name) {
+            contact.ops_column_name = ops_column_name;
+            reverseSyncPayload[ops_column_name] = switch_contacts[idx].USER_ID;
+          }
+        } else if (switch_contacts[idx].ROLE === "IMPLEMENTATION_MANAGER") {
+          contact.role = switch_contacts[idx].ROLE;
+          contact.userid = switch_contacts[idx].USER_ID;
+          contact.fname = switch_contacts[idx].FNAME;
+          contact.lname = switch_contacts[idx].LNAME;
+          let ops_column_name = impMgrCols.shift();
+          contact.updated_by = switchData.CREATED_BY;
+          Iif (ops_column_name) {
+            contact.ops_column_name = ops_column_name;
+            reverseSyncPayload[ops_column_name] = switch_contacts[idx].USER_ID;
+          }
+        } else Iif (switch_contacts[idx].ROLE === "IMPLEMENTATION_ENGINEER") {
+          contact.role = switch_contacts[idx].ROLE;
+          contact.userid = switch_contacts[idx].USER_ID;
+          contact.fname = switch_contacts[idx].FNAME;
+          contact.lname = switch_contacts[idx].LNAME;
+          let ops_column_name = impEngCols.shift();
+          contact.updated_by = switchData.CREATED_BY;
+          Iif (ops_column_name) {
+            contact.ops_column_name = ops_column_name;
+            reverseSyncPayload[ops_column_name] = switch_contacts[idx].USER_ID;
+          }
+        }
+ 
+        contacts.push(contact);
+      }
+ 
+      for (let key in insertData) {
+        Iif (constants.createSwitchColumnMapLeftKeyIop[key]) {
+          reverseSyncPayload[constants.createSwitchColumnMapLeftKeyIop[key]] =
+            insertData[key];
+        }
+      }
+ 
+      Iif (insertData["ENV_NOCC_MONITORED"]) {
+        reverseSyncPayload["env_nocc_monitored"] =
+          Number(insertData["ENV_NOCC_MONITORED"]) == 1;
+      }
+ 
+      constants.ValidColumnsOfSwitchPmControl.forEach((item) => {
+        Iif (insertData[item.toUpperCase()]) {
+          reverseSyncPayload[item] =
+            Number(insertData[item.toUpperCase()]) == 1;
+        }
+      });
+ 
+      const data = {} as any; //await this.reverseSync(reverseSyncPayload);
+ 
+      Iif (data?.fields?.meta_universalid?.value) {
+        insertData["SWITCH_UNID"] = data?.fields?.meta_universalid?.value;
+        contacts = contacts.map((item) => ({
+          ...item,
+          switch_unid: data?.fields?.meta_universalid?.value,
+        }));
+      }
+      Iif (data?.fields?.locationid?.value) {
+        insertData["LOCATION_ID"] = data?.fields?.locationid?.value;
+      }
+      Iif (data?.fields?.env_alarm_next_test?.value) {
+        insertData["ENV_ALARM_NEXT_TEST"] =
+          data?.fields?.env_alarm_next_test.value;
+      }
+ 
+      const inserted = await this.switchRepo.insertSwitch(insertData);
+      const contactSaved = await this.switchRepo.addContacts(contacts);
+ 
+      Iif (!inserted) {
+        throw new InternalServerErrorException("Failed to insert record");
+      }
+      Iif (!contactSaved) {
+        throw new InternalServerErrorException(
+          "Failed to insert contact record"
+        );
+      }
+ 
+      return {
+        resultcode: 0,
+        resultmessage: "Record saved successfully",
+        fields: {
+          switch_unid: {
+            value: data?.fields?.meta_universalid?.value || switchUnid,
+          },
+          switch: { value: dto.SWITCH || "" }
+        },
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(error);
+    }
   }
+  async getSwitchContacts(data) {
+    try {
+      if (data.role && data.name) data.key = "getContactByRoleAndName";
+      else data.key = "getRoles";
+      return await this.switchRepo.getSwitchContacts(data);
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(error);
+    }
+  }
+  async reverseSync(payload: {}) {
+    try {
+      let url = config.reverseSync?.reverseSyncDevUrl||config.reverseSync.reverseSyncUrl;
+      let authHeader = config.app.authHeader;
+      let args = {
+        url,
+        method: "post",
+        params: {
+          recordtype: "C2Switchlocation",
+        },
+        headers: {
+          Accept: "application/json",
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: payload,
+          retrieve: [
+            "meta_universalid",
+            "SWITCH",
+            "LocationId",
+            "ENV_ALARM_NEXT_TEST",
+            "ENV_ALARMS_TESTED",
+          ],
+        }),
+        transformRequest: [
+          (data, headers) => {
+            console.log("Request Data:", data);
+            console.log("Request Headers:", headers);
+            return data;
+          },
+        ],
+      };
+      const res = await fetch(args.url, args);
+      const data = await res.json();
+      console.log({ data });
+      Iif (data?.error?.message) {
+        throw { message: data?.error?.message };
+      }
+      return data;
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+  async getDistinctValues(filter: string) {
+    try {
+      return await this.switchRepo.getDistinctValues(filter);
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(error);
+    }
+  }
+}
+ 
+Code coverage generated by istanbul at 2025-02-04T12:03:30.059Z
