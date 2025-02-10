@@ -1,1 +1,5 @@
+const values = Object.values(data);
+    const bindVars = values.map((value, index) => `:val${index + 1}`).join(', ');
 
+    // Build the query
+    const query = `INSERT INTO ${tableName} (${columns}) VALUES (${bindVars})`;
